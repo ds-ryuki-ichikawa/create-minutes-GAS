@@ -2,6 +2,8 @@
 
 Google Meet の「Gemini によるメモ」から議事録を作り、TODO を Backlog に課題登録する Claude Code のカスタムコマンドです。
 
+使い方だけ知りたい人は [GUIDE.md](GUIDE.md) を読んでください。
+
 ## できること
 
 1. Google Drive から Gemini のメモ（メモ＋文字起こし）を読み込む
@@ -20,6 +22,7 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 |---|---|
 | `commands/create-minutes.md` | コマンド本体（実行手順） |
 | `templates/minutes-template.md` | 議事録の変換プロンプト（書き方の指示） |
+| `GUIDE.md` | エンジニアでない人向けの使い方ガイド |
 
 ## セットアップ
 
