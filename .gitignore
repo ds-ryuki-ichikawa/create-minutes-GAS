@@ -1,0 +1,7 @@
+# 配布用にまとめた zip（中身は commands/・templates/・README.md と同じ）
+*.zip
+
+# OS が作るファイル
+Thumbs.db
+desktop.ini
+.DS_Store
