@@ -388,5 +388,5 @@ Canvas URL は `https://app.slack.com/canvas/{CANVAS_ID}` として `CANVAS_URL`
 📅 カレンダー     : {CALENDAR_COUNT} 件のリマインドを登録（Google Calendar が使えない場合は「未登録：手動登録用の一覧を表示済み」）
 🎨 Canvas URL    : {CANVAS_URL}（`--slack-channel` 指定なしの場合は「—」）
 💬 Slack 予約送信 : {SEND_AT_LABEL} にチャンネル #{チャンネル名} へ送信予定（Slack が使えない場合は「未送信：手動投稿用のメッセージを表示済み」、`--slack-channel` 指定なしの場合は「—」）
-✅ TODO           : {TODO_COUNT} 件抽出（社内 {社内の件数} 件・社外 {社外の件数} 件）
+✅ TODO           : {TODO_COUNT} 件抽出（社内 {社内の件数} 件・社外 {社外の件数} 件・不明 {不明の件数} 件。不明が 0 件なら「・不明」以降は省く）
 ```
