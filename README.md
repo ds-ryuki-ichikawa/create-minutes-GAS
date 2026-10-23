@@ -64,6 +64,7 @@ Slack に共有しない場合は、Slack の引数を省略できます。
 | `--send-at` | — | 送信予約日時（例: `明日9時`、`5/15 9:00`）。`--slack-channel` を指定したときは必須 |
 | `--backlog-project` | — | 課題登録先のプロジェクトキー（省略時 `IB_TASK`） |
 | `--canvas-id` | — | 更新する Slack Canvas の ID（省略時は新規作成） |
+| `--prev` | — | 前回の議事録（ファイルパスか Google Docs の ID）。省略時は `~/Documents/minutes/` から同じ名前の会議を自動で探す。`none` で比較しない |
 | `--dry-run` | — | お試し実行 |
 
 詳しくは `commands/create-minutes.md` を参照してください。

@@ -17,6 +17,7 @@ Google Docs の会議メモを読み込み、指定フォーマットで議事�
 | `--send-at` | — | 送信予約日時。柔軟な表現を受け付ける（後述）。`--slack-channel` を指定したときは必須 |
 | `--canvas-id` | — | 更新対象の Slack Canvas ID。省略時は新規作成 |
 | `--backlog-project` | — | TODO を課題登録する Backlog プロジェクトキー。省略時は `IB_TASK` |
+| `--prev` | — | 前回の議事録。ローカルのファイルパス（`~/Documents/minutes/` 内ならファイル名だけでも可）または Google Docs の ID・URL。省略時は同じ名前の会議の議事録を自動で探す。`--prev none` で前回との比較をしない |
 | `--dry-run` | — | お試し実行。保存・Backlog 登録・カレンダー登録・Canvas・Slack 送信は行わず、実行予定の内容を表示するだけにする |
 
 **`--send-at` に指定できる表現の例:**
@@ -49,6 +50,7 @@ Google Docs の会議メモを読み込み、指定フォーマットで議事�
 - `BACKLOG_PROJECT` ← `--backlog-project` の値（省略時は `IB_TASK`）
 - `DRY_RUN` ← `--dry-run` が指定されていれば true、なければ false
 - `SLACK_ENABLED` ← `--slack-channel` が指定されていれば true、なければ false
+- `PREV_SOURCE` ← `--prev` の値（省略時は空文字＝自動で探す。`none` なら前回との比較をしない）
 
 **`SLACK_ENABLED` が false の場合:**  
 Slack への共有は行わない。Step 2・Step 11・Step 12 は実行せず、Step 13 の Canvas・Slack の行は「—（`--slack-channel` 指定なし）」とする。  
@@ -101,9 +103,31 @@ Slack のツールが使える場合は `SLACK_AVAILABLE` を true にし、以�
 ファイルが見つからない場合は処理を中断し、テンプレートの配置場所を確認するようユーザーに伝える。  
 このファイルは議事録の生成方法を記述した変換プロンプトであり、Step 5 でそのまま指示として使用する。
 
+### Step 4-2: 前回の議事録を読み込む
+
+同じ会議の前回の議事録を読み込み、今回の議事録で「前回からの変更」を書けるようにする。`PREV_SOURCE` が `none` の場合はこのステップを飛ばし、`PREV_MINUTES` を空にする。
+
+**1. 前回の議事録を見つける**
+
+- `PREV_SOURCE` が Google Docs の ID・URL の場合: `mcp__claude_ai_Google_Drive__read_file_content` で読み込む
+- `PREV_SOURCE` がファイルパスの場合: そのファイルを読み込む。ファイル名だけなら `~/Documents/minutes/` から探す
+- `PREV_SOURCE` が空の場合（自動で探す）:
+  - `DOC_TITLE` から Step 8 と同じ手順で `sanitized_title` を作る
+  - `~/Documents/minutes/` から `{YYYY-MM-DD}_{sanitized_title}.md`（末尾に `_2`、`_3` … が付いたものも含む）を探し、日付が今回の会議日より前のものの中で最も新しいものを選ぶ（同じ日付が複数あれば末尾の番号が大きいもの）
+- 見つからない・読み込めない場合は処理を止めずに `PREV_MINUTES` を空にし、「前回の議事録は見つかりませんでした（初回の会議として扱います）」と表示する
+- 見つかった場合は、本文を `PREV_MINUTES`、ファイルの場所を `PREV_FILE`、前回の開催日を `PREV_DATE` に格納し、「📎 前回の議事録：{PREV_FILE}（{PREV_DATE}）と比べます」と表示する
+
+**2. 前回の TODO の Backlog の状態を調べる**
+
+`PREV_MINUTES` が空でない場合、前回の TODO を登録した Backlog の課題を探す。
+
+- `mcp__backlog__get_issues` で、`keyword` に前回の会議名（`PREV_MINUTES` のタイトル行から「 議事録」を除いたもの）、`count` に 20 を指定して検索する
+- 説明文に `開催日: {PREV_DATE}` を含む課題だけを、前回の TODO の課題とみなす
+- 課題キー・件名・状態を `PREV_BACKLOG` に格納する。見つからなければ空にする（前回 Backlog に登録していない場合もある）
+
 ### Step 5: 議事録を Markdown で生成する
 
-Step 3 で取得した元ドキュメントの本文を入力として、Step 4 で読み込んだ変換プロンプトの指示に従って議事録を Markdown で生成する。
+Step 3 で取得した元ドキュメントの本文を入力として、Step 4 で読み込んだ変換プロンプトの指示に従って議事録を Markdown で生成する。`PREV_MINUTES` が空でない場合は、`PREV_MINUTES` と `PREV_BACKLOG` も「前回の議事録」「前回の TODO の Backlog の状態」として渡す。
 
 変換プロンプトに記載のない点については以下のデフォルトルールを適用する:
 - 箇条書きを積極活用し、読みやすく簡潔にまとめる
@@ -130,6 +154,9 @@ Step 3 で取得した元ドキュメントの本文を入力として、Step 4 
 
 ■ 非公開情報（社外に共有する前に伏せるか確認）
   {「非公開情報」セクションの内容}
+
+■ 前回からの変更（前回：{PREV_DATE}｜{PREV_FILE}）
+  {「前回からの変更」セクションの内容。前回の議事録がない場合は「前回の議事録なし（初回として扱いました）」}
 
 ■ 要確認事項
   {「要確認事項」セクションの内容}
@@ -184,6 +211,7 @@ Step 6 のチェックで OK を受けた確定版を保存する。保存先は
 
 - 区分が「社外」の行（お客様・取引先の作業）は社内の Backlog に登録しない。確認一覧に「登録しない TODO」として表示する
 - 区分が「不明」の行は ⚠ を付けて確認一覧に出し、登録するかどうかをユーザーに決めてもらう
+- 「（前回から継続）」の行で、`PREV_BACKLOG` に対応する課題がある場合は新しく登録しない。確認一覧に「前回の課題を継続：{課題キー}（{状態}）」と表示し、期限が変わった場合は課題の期限の更新を提案する（更新はユーザーが指示したときだけ行う）
 
 **1. 登録内容を組み立てる**
 
@@ -389,4 +417,5 @@ Canvas URL は `https://app.slack.com/canvas/{CANVAS_ID}` として `CANVAS_URL`
 🎨 Canvas URL    : {CANVAS_URL}（`--slack-channel` 指定なしの場合は「—」）
 💬 Slack 予約送信 : {SEND_AT_LABEL} にチャンネル #{チャンネル名} へ送信予定（Slack が使えない場合は「未送信：手動投稿用のメッセージを表示済み」、`--slack-channel` 指定なしの場合は「—」）
 ✅ TODO           : {TODO_COUNT} 件抽出（社内 {社内の件数} 件・社外 {社外の件数} 件・不明 {不明の件数} 件。不明が 0 件なら「・不明」以降は省く）
+🔗 前回の議事録   : {PREV_FILE}（{PREV_DATE}）と比較（前回の議事録がない場合は「なし」）
 ```
