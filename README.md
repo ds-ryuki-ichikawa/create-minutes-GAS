@@ -74,3 +74,56 @@ Slack に共有しない場合は、Slack の引数を省略できます。
 - Slack に送るメッセージには、議事録の「非公開情報」は含めません
 - カレンダーの招待に使う担当者のメールアドレスは Backlog から取れないため、登録前の確認でチャットから伝えてください（伝えなければ招待なしで登録します）
 - コマンドを修正したら、`~/.claude` 側とこのリポジトリの両方を更新してください
+
+## 困ったとき
+
+### Backlog MCP が「Connection closed」でつながらない
+
+**原因**: VS Code から Node.js が見えていない（PATH が通っていない）。Node.js を入れる前から VS Code を起動していると起きる。VS Code を再起動しても直らないことがある。
+
+**確かめ方**: VS Code のターミナルで `node -v` を実行し、「認識されません」と出たらこれが原因。
+
+**直し方**: `~/.claude.json` の `mcpServers` → `backlog` → `env` に `PATH` を書き足し、`/mcp` で再接続する（だめなら VS Code の「Developer: Reload Window」）。
+
+```json
+"backlog": {
+  "type": "stdio",
+  "command": "C:\\Program Files\\nodejs\\npx.cmd",
+  "args": ["-y", "backlog-mcp-server"],
+  "env": {
+    "PATH": "C:\\Program Files\\nodejs;C:\\Windows\\system32;C:\\Windows;C:\\Windows\\System32\\WindowsPowerShell\\v1.0",
+    "BACKLOG_DOMAIN": "{スペース}.backlog.jp",
+    "BACKLOG_API_KEY": "{自分の API キー}"
+  }
+}
+```
+
+### コネクタを許可したのに使えない
+
+**原因**: claude.ai でコネクタ（Google Calendar など）を許可しても、開いている Claude Code には反映されない。
+
+**直し方**: Claude Code を開き直す（VS Code の「Developer: Reload Window」など）。`/mcp` でそのコネクタが「connected」になっていれば使える。
+
+### インストールしたコマンド（git など）が「認識されません」と出る
+
+**原因**: Backlog MCP と同じで、インストール前から開いている VS Code には新しい PATH が反映されない。
+
+**直し方**: VS Code をすべて閉じてから開き直す。
+
+### カレンダーの招待で担当者のメールアドレスが入らない
+
+**原因**: Backlog の API では、自分以外のユーザーのメールアドレスを取得できない。
+
+**直し方**: カレンダー登録前の確認一覧で、招待したい人のメールアドレスをチャットで伝える。伝えなければ招待なしで登録する（担当者が自分のときは招待しない）。
+
+### テストで Backlog に課題を登録してしまった
+
+**原因**: 登録した課題は、権限によっては削除できない。
+
+**直し方**: コメントを付けてクローズする。試すときは `--dry-run` を使い、本当に登録して確かめたいときは件名に「【テスト】」を付けて 1 件だけにする。
+
+### 登録前の一覧に「⚠ 似た課題あり」と出る
+
+**原因**: 同じ作業の課題が Backlog にすでにある（完了済みも含む）。古い会議のメモで実行したときによく出る。
+
+**直し方**: 重複する TODO は、登録前の確認で「◯番は除外」とチャットで伝える。
