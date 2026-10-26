@@ -1,6 +1,11 @@
+---
+name: create-minutes
+description: Google Meet の「Gemini によるメモ」（Google ドキュメント）から議事録を作り、社内の TODO を Backlog の課題と Google カレンダーのリマインドに登録する。会議メモの URL を渡されて、議事録や TODO の作成を頼まれたときに使う。
+---
+
 # 議事録作成
 
-`/create-minutes` または `create-minutes` と入力すると実行する。  
+Claude Code では `/create-minutes` と入力すると実行する。Claude Desktop の Cowork では、`/` で出るメニューから `create-minutes` を選ぶか、会議メモの URL を貼って議事録の作成を頼むと実行する。  
 Google Docs の会議メモを読み込み、指定フォーマットで議事録・TODO を生成し、ローカル保存・Backlog 課題登録・Google カレンダーへのリマインド登録・Slack 予約送信・Canvas 登録を自動で行う。
 
 引数: `$ARGUMENTS`
@@ -36,11 +41,21 @@ Google Docs の会議メモを読み込み、指定フォーマットで議事�
 
 ---
 
+## 環境による違い
+
+Claude Code（VS Code・ターミナル）と Claude Desktop の Cowork のどちらでも動くように書いている。違いは次の 3 点。
+
+- **ツール名**: 手順に書いたツール名（`mcp__claude_ai_Google_Drive__read_file_content` など）は Claude Code での例。Cowork などでは名前が違うことがあるので、使えるツールの中から同じ機能のもの（Google ドライブのファイル読み込み、Backlog の課題検索・登録、Google カレンダーの予定一覧・作成など）を選んで使う。引数名は各ツールの定義に合わせる
+- **保存先フォルダ**: 議事録は `~/Documents/minutes/` に保存する（以下 `MINUTES_DIR`）。Cowork では、接続されたフォルダのうち `minutes` フォルダ（またはドキュメントフォルダの中の `minutes`）を `MINUTES_DIR` とする。読み書きできるフォルダがない場合は、ユーザーに「ドキュメントの minutes フォルダを接続してください」と伝えてから進める。接続されなければ、議事録を Cowork の成果物ファイルとして出力し、その場所を保存先として報告する
+- **Backlog**: Backlog のツールが使えない場合も処理を止めず、Step 9 の「Backlog が使えない場合」に従う
+
+---
+
 ## 実行手順
 
 ### Step 1: 引数をパースする
 
-`$ARGUMENTS` 文字列から以下を抽出し、各変数に格納する:
+引数（`$ARGUMENTS`）から以下を抽出し、各変数に格納する。引数が空の場合は、ユーザーのメッセージから読み取る（会議メモの URL だけが書かれていれば `--doc-id`、「お試し」とあれば `--dry-run` とみなす）。`--doc-id` がわからなければユーザーに聞く:
 
 - `DOC_ID` ← `--doc-id` の値（URL の場合は `/document/d/{ID}/` の `{ID}` 部分を抽出する）
 - `RAW_CHANNEL` ← `--slack-channel` の値（名前または ID の文字列そのまま）
@@ -91,16 +106,17 @@ Slack のツールが使える場合は `SLACK_AVAILABLE` を true にし、以�
 
 ### Step 3: 元ドキュメントを読み込む
 
-`mcp__claude_ai_Google_Drive__read_file_content` の `fileId` に `DOC_ID` を渡してドキュメントを読み込む。  
+Google ドライブのファイル読み込みツール（例: `mcp__claude_ai_Google_Drive__read_file_content`）の `fileId` に `DOC_ID` を渡してドキュメントを読み込む。  
 ドキュメントのタイトルと本文全体を取得し、タイトルを `DOC_TITLE` に格納する。
 
 - 本文には「メモ」タブ（概要・決定事項・次のステップ・詳細）と「文字起こし」タブの両方が含まれる
 - ファイルが見つからない・権限がない場合は処理を中断し、ドキュメントの共有設定を確認するようユーザーに伝える
+- Google ドライブのツールが使えない場合は処理を中断し、Google ドライブのコネクタを接続するようユーザーに伝える
 
 ### Step 4: 変換プロンプトを読み込む
 
-`~/.claude/templates/minutes-template.md` を読み込む（`~` は実行ユーザーのホームディレクトリ）。  
-ファイルが見つからない場合は処理を中断し、テンプレートの配置場所を確認するようユーザーに伝える。  
+このスキルのフォルダにある `references/minutes-template.md`（`${CLAUDE_SKILL_DIR}/references/minutes-template.md`）を読み込む。  
+ファイルが見つからない場合は処理を中断し、スキルのファイル一式（`references/` フォルダを含む）がそろっているか確認するようユーザーに伝える。  
 このファイルは議事録の生成方法を記述した変換プロンプトであり、Step 5 でそのまま指示として使用する。
 
 ### Step 4-2: 前回の議事録を読み込む
@@ -109,11 +125,11 @@ Slack のツールが使える場合は `SLACK_AVAILABLE` を true にし、以�
 
 **1. 前回の議事録を見つける**
 
-- `PREV_SOURCE` が Google Docs の ID・URL の場合: `mcp__claude_ai_Google_Drive__read_file_content` で読み込む
-- `PREV_SOURCE` がファイルパスの場合: そのファイルを読み込む。ファイル名だけなら `~/Documents/minutes/` から探す
+- `PREV_SOURCE` が Google Docs の ID・URL の場合: Step 3 と同じ Google ドライブのツールで読み込む
+- `PREV_SOURCE` がファイルパスの場合: そのファイルを読み込む。ファイル名だけなら `MINUTES_DIR` から探す
 - `PREV_SOURCE` が空の場合（自動で探す）:
   - `DOC_TITLE` から Step 8 と同じ手順で `sanitized_title` を作る
-  - `~/Documents/minutes/` から `{YYYY-MM-DD}_{sanitized_title}.md`（末尾に `_2`、`_3` … が付いたものも含む）を探し、日付が今回の会議日より前のものの中で最も新しいものを選ぶ（同じ日付が複数あれば末尾の番号が大きいもの）
+  - `MINUTES_DIR` から `{YYYY-MM-DD}_{sanitized_title}.md`（末尾に `_2`、`_3` … が付いたものも含む）を探し、日付が今回の会議日より前のものの中で最も新しいものを選ぶ（同じ日付が複数あれば末尾の番号が大きいもの）
 - 見つからない・読み込めない場合は処理を止めずに `PREV_MINUTES` を空にし、「前回の議事録は見つかりませんでした（初回の会議として扱います）」と表示する
 - 見つかった場合は、本文を `PREV_MINUTES`、ファイルの場所を `PREV_FILE`、前回の開催日を `PREV_DATE` に格納し、「📎 前回の議事録：{PREV_FILE}（{PREV_DATE}）と比べます」と表示する
 
@@ -121,9 +137,10 @@ Slack のツールが使える場合は `SLACK_AVAILABLE` を true にし、以�
 
 `PREV_MINUTES` が空でない場合、前回の TODO を登録した Backlog の課題を探す。
 
-- `mcp__backlog__get_issues` で、`keyword` に前回の会議名（`PREV_MINUTES` のタイトル行から「 議事録」を除いたもの）、`count` に 20 を指定して検索する
+- Backlog の課題検索ツール（例: `mcp__backlog__get_issues`）で、`keyword` に前回の会議名（`PREV_MINUTES` のタイトル行から「 議事録」を除いたもの）、`count` に 20 を指定して検索する
 - 説明文に `開催日: {PREV_DATE}` を含む課題だけを、前回の TODO の課題とみなす
 - 課題キー・件名・状態を `PREV_BACKLOG` に格納する。見つからなければ空にする（前回 Backlog に登録していない場合もある）
+- Backlog のツールが使えない場合は `PREV_BACKLOG` を空にして先に進む（前回の TODO の状況は会議での発言だけで判断する）
 
 ### Step 5: 議事録を Markdown で生成する
 
@@ -192,9 +209,9 @@ Step 3 で取得した元ドキュメントの本文を入力として、Step 4 
 
 ### Step 8: ローカルに保存する
 
-Step 6 のチェックで OK を受けた確定版を保存する。保存先は実行ディレクトリに関係なく `~/Documents/minutes/` に固定する（`~` は実行ユーザーのホームディレクトリ）。
+Step 6 のチェックで OK を受けた確定版を保存する。保存先は実行ディレクトリに関係なく `MINUTES_DIR`（「環境による違い」を参照）に固定する。
 
-1. `~/Documents/minutes/` ディレクトリが存在しない場合は `New-Item -ItemType Directory -Force "$env:USERPROFILE\Documents\minutes"` で作成する
+1. `MINUTES_DIR` が存在しない場合は作成する（例: PowerShell なら `New-Item -ItemType Directory -Force "$env:USERPROFILE\Documents\minutes"`、bash なら `mkdir -p ~/Documents/minutes`）
 2. ファイル名: `{YYYY-MM-DD}_{sanitized_title}.md`（`YYYY-MM-DD` は会議日付）。日付はファイル名の先頭に 1 回だけ付ける。`sanitized_title` は `DOC_TITLE` から以下の順に作る:
    - 末尾の「 - Gemini によるメモ」を除く
    - 日付（例: `2026/10/02`、`2026-10-02`、`20261002`、`10/2`）、時刻（例: `14:29`）、タイムゾーン（例: `JST`）を除く
@@ -213,16 +230,29 @@ Step 6 のチェックで OK を受けた確定版を保存する。保存先は
 - 区分が「不明」の行は ⚠ を付けて確認一覧に出し、登録するかどうかをユーザーに決めてもらう
 - 「（前回から継続）」の行で、`PREV_BACKLOG` に対応する課題がある場合は新しく登録しない。確認一覧に「前回の課題を継続：{課題キー}（{状態}）」と表示し、期限が変わった場合は課題の期限の更新を提案する（更新はユーザーが指示したときだけ行う）
 
+**Backlog が使えない場合:**  
+Backlog のツールが使えない（コネクタ未接続・未認可）場合は処理を中断せず、`BACKLOG_AVAILABLE` を false にする。課題は作らず、Step 13 で「未登録：手動登録用の一覧を表示済み」と報告し、以下の一覧を表示する（担当者の照合と似た課題の確認はしない）:
+
+```
+📝 Backlog が接続されていないため、以下を {BACKLOG_PROJECT} に手動で登録してください
+
+  1. {件名}｜担当：{担当者}｜期限：{期限 または なし}
+  ...
+
+  登録しない TODO（社外の作業）：
+  - {内容}｜{担当者}｜{期限}
+```
+
 **1. 登録内容を組み立てる**
 
-- プロジェクト・ユーザー・種別・優先度は `mcp__backlog__get_project`、`mcp__backlog__get_project_users`、`mcp__backlog__get_issue_types`、`mcp__backlog__get_priorities` で取得する
+- プロジェクト・ユーザー・種別・優先度は、Backlog のプロジェクト・プロジェクトユーザー・種別・優先度の取得ツール（例: `mcp__backlog__get_project`、`mcp__backlog__get_project_users`、`mcp__backlog__get_issue_types`、`mcp__backlog__get_priorities`）で取得する
 - 件名: TODO の「対応内容」
 - 種別: 「タスク」、優先度: 「中」
 - 担当者: TODO の担当者名とプロジェクトユーザーの `name` を、半角・全角スペースを無視して照合する
   - 1 人に一致 → その人を担当者にする
   - 一致なし、または名字だけで複数人に一致 → 担当者は空にし、⚠ を付けて確認対象にする
 - 期限: TODO の期限（`YYYY-MM-DD`）。「未定」なら設定しない
-- 重複確認: TODO の内容から主な語句（例: 「注文メール」「取り込み」）を選び、`mcp__backlog__get_issues` の `keyword` で `BACKLOG_PROJECT` の課題を検索する。完了済みも含めて、同じ作業と思われる課題があれば、その課題キー・件名・状態を控えて確認対象にする。検索結果には課題の説明文がまるごと含まれて量が多くなるため、語句は TODO 全体で 3〜4 個までに絞り（1 つの語句で複数の TODO をまとめて確かめる）、`count` は 10 にする
+- 重複確認: TODO の内容から主な語句（例: 「注文メール」「取り込み」）を選び、Backlog の課題検索ツール（例: `mcp__backlog__get_issues`）の `keyword` で `BACKLOG_PROJECT` の課題を検索する。完了済みも含めて、同じ作業と思われる課題があれば、その課題キー・件名・状態を控えて確認対象にする。検索結果には課題の説明文がまるごと含まれて量が多くなるため、語句は TODO 全体で 3〜4 個までに絞り（1 つの語句で複数の TODO をまとめて確かめる）、`count` は 10 にする
 - 詳細: 以下の形式
 
 ```
@@ -258,7 +288,7 @@ Step 6 のチェックで OK を受けた確定版を保存する。保存先は
 
 **3. 登録する**
 
-`mcp__backlog__add_issue` で 1 件ずつ登録する。作成された課題キーと URL（`https://{スペースキー}.backlog.jp/view/{課題キー}`。スペースキーは `mcp__backlog__get_space` で取得する）を `BACKLOG_ISSUES` に、件数を `BACKLOG_COUNT` に格納する。  
+Backlog の課題登録ツール（例: `mcp__backlog__add_issue`）で 1 件ずつ登録する。作成された課題キーと URL（`https://{スペースキー}.backlog.jp/view/{課題キー}`。スペースキーはスペース情報の取得ツール（例: `mcp__backlog__get_space`）で取得する）を `BACKLOG_ISSUES` に、件数を `BACKLOG_COUNT` に格納する。  
 途中で失敗した場合は、そこで止めて登録済みの課題キーと失敗した TODO をユーザーに伝える。  
 登録した課題は権限によっては削除できないため、不要になった課題はコメントを付けてクローズするか、管理者に削除を依頼するようユーザーに伝える。
 
@@ -295,7 +325,7 @@ Backlog: {Step 9 で登録した課題の URL。登録していなければ省�
   - Backlog では他のユーザーのメールアドレスを取得できない（本人のものしか見えない）ため、担当者のメールアドレスは確認時にユーザーから受け取る
   - 担当者が実行者本人の場合は招待しない
   - メールアドレスがわからない担当者は招待せず、⚠ を付けて確認対象にする
-- 重複防止: `mcp__claude_ai_Google_Calendar__list_events` で期限日（`startTime`: 期限日 `T00:00:00`、`endTime`: 翌日 `T00:00:00`、`fullText`: `【期限】`）の予定を取得し、同じタイトルの予定がすでにある場合は作らず、「登録済み」として扱う
+- 重複防止: Google カレンダーの予定一覧ツール（例: `mcp__claude_ai_Google_Calendar__list_events`）で期限日（`startTime`: 期限日 `T00:00:00`、`endTime`: 翌日 `T00:00:00`、`fullText`: `【期限】`）の予定を取得し、同じタイトルの予定がすでにある場合は作らず、「登録済み」として扱う
 
 **2. 登録前に確認する**
 
@@ -316,7 +346,7 @@ Backlog: {Step 9 で登録した課題の URL。登録していなければ省�
 
 **3. 登録する**
 
-`mcp__claude_ai_Google_Calendar__create_event` で 1 件ずつ登録し、件数を `CALENDAR_COUNT` に格納する:
+Google カレンダーの予定作成ツール（例: `mcp__claude_ai_Google_Calendar__create_event`）で 1 件ずつ登録し、件数を `CALENDAR_COUNT` に格納する。以下は Claude Code のツールの引数名で、ほかの環境では各ツールの定義に合わせる:
 - `summary`: タイトル
 - `allDay`: true
 - `startTime`: 期限日 `T00:00:00`（例: `2026-10-30T00:00:00`）、`endTime`: 翌日 `T00:00:00`
@@ -412,7 +442,7 @@ Canvas URL は `https://app.slack.com/canvas/{CANVAS_ID}` として `CANVAS_URL`
 ✅ 議事録作成完了
 
 📄 ローカル保存先 : {LOCAL_FILE_PATH}
-📝 Backlog 課題   : {BACKLOG_COUNT} 件登録（{課題キーをカンマ区切り}）
+📝 Backlog 課題   : {BACKLOG_COUNT} 件登録（{課題キーをカンマ区切り}）（Backlog が使えない場合は「未登録：手動登録用の一覧を表示済み」）
 📅 カレンダー     : {CALENDAR_COUNT} 件のリマインドを登録（Google Calendar が使えない場合は「未登録：手動登録用の一覧を表示済み」）
 🎨 Canvas URL    : {CANVAS_URL}（`--slack-channel` 指定なしの場合は「—」）
 💬 Slack 予約送信 : {SEND_AT_LABEL} にチャンネル #{チャンネル名} へ送信予定（Slack が使えない場合は「未送信：手動投稿用のメッセージを表示済み」、`--slack-channel` 指定なしの場合は「—」）
