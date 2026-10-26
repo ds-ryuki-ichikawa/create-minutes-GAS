@@ -25,6 +25,7 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 | `skills/create-minutes/references/settings.md` | 組織の初期値（Backlog のプロジェクト・議事録の保存先）。リポジトリでは空 |
 | `.claude-plugin/plugin.json` | プラグインの情報（ユーザー設定の項目と Backlog MCP の設定を含む） |
 | `.claude-plugin/marketplace.json` | Claude Code でプラグインとして入れるときに使う（Cowork 用の zip には入れない） |
+| `scripts/build-cowork-zip.sh` | Cowork にアップロードする zip を作る |
 | `GUIDE.md` | エンジニアでない人向けの使い方ガイド |
 
 ## 設定（Backlog のプロジェクト・保存先・API キー）
@@ -78,13 +79,14 @@ Claude Desktop の Code タブも Claude Code なので、上の準備をして�
 Claude Desktop は公式サイト（https://claude.com/download）から入れてください。winget で入れると古い形式になり、Cowork が使えません。
 
 1. 組織の初期値を決める場合は、`skills/create-minutes/references/settings.md` に Backlog のプロジェクトキーと保存先のフォルダの URL を書く（Cowork にはユーザー設定の画面がないため、ここに書いた値が使われる）
-2. `.claude-plugin/plugin.json` と `skills` フォルダを zip にまとめる（`marketplace.json` は入れない）。git の場合は、コミットしてから次のようにする
+2. コミットしてから、Git Bash で次を実行して zip を作る
 
    ```
-   git archive --format=zip -o create-minutes-plugin.zip HEAD -- .claude-plugin/plugin.json skills
+   scripts/build-cowork-zip.sh
    ```
 
-   `settings.md` に書いた値をコミットしたくない場合は、エクスプローラーで 2 つを選んで zip にする
+   - zip の `plugin.json` からは、プラグインの Backlog の接続（`mcpServers`）とユーザー設定の項目（`userConfig`）を外している。Cowork ではユーザー設定を入力できないため、入れたままだと Backlog の接続が必ず失敗し、「Backlog の接続に失敗しています」と出る
+   - `settings.md` に書いた値をコミットしたくない場合は、値を書いた `settings.md` を別の場所に置き、`scripts/build-cowork-zip.sh {出力する zip} {その settings.md}` とする
 3. Claude Desktop の「Customize」→「Plugins」→「Add」→「Upload plugin」で zip を選ぶ
 4. 「Customize」→「Connectors」で Google Drive と Google Calendar を接続する
 5. Backlog を使う場合は、Claude Desktop の設定ファイル（`%APPDATA%\Claude\claude_desktop_config.json`）に Backlog MCP を書き足し、Claude Desktop を再起動する。中身は下の「Backlog MCP が『Connection closed』でつながらない」の例と同じ（`type` の行は不要）。設定ファイルは Claude Desktop を終了してから編集する（開いたままだと上書きされることがある）。Backlog を設定しない場合は、登録する課題の一覧が出るので手で登録する
