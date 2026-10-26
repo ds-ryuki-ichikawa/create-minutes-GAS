@@ -1,6 +1,6 @@
 # create-minutes
 
-Google Meet の「Gemini によるメモ」から議事録を作り、TODO を Backlog に課題登録するスキルです。Claude Code と Claude Desktop（Cowork）のどちらでも使えます（Cowork は動作確認中）。
+Google Meet の「Gemini によるメモ」から議事録を作り、TODO を Backlog に課題登録するスキルです。Claude Code（VS Code・Claude Desktop の Code タブ）と Claude Desktop の Cowork のどちらでも使えます。
 
 使い方だけ知りたい人は [GUIDE.md](GUIDE.md) を読んでください。
 
@@ -40,16 +40,20 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 
 3. Claude Code を開き直すと `/create-minutes` が使えるようになる
 
+Claude Desktop の Code タブも Claude Code なので、上の準備をしてあればそのまま `/create-minutes` が使えます（スキルと Backlog の設定を VS Code 版と共有します）。
+
 ### Claude Desktop（Cowork）で使う
+
+Claude Desktop は公式サイト（https://claude.com/download）から入れてください。winget で入れると古い形式になり、Cowork が使えません。
 
 1. このリポジトリの `.claude-plugin` と `skills` の 2 つのフォルダを zip にまとめる
 2. Claude Desktop の「Customize」→「Plugins」→「Add」→「Upload plugin」で zip を選ぶ
 3. 「Customize」→「Connectors」で Google Drive と Google Calendar を接続する
-4. Backlog はまだ Cowork から使えるか確かめていない。使えないときは、登録する課題の一覧が出るので手で登録する
-5. Cowork のタスクで「ドキュメント」の `minutes` フォルダを接続する（議事録の保存先）
+4. Backlog を使う場合は、Claude Desktop の設定ファイル（`%APPDATA%\Claude\claude_desktop_config.json`）に Backlog MCP を書き足し、Claude Desktop を再起動する。中身は下の「Backlog MCP が『Connection closed』でつながらない」の例と同じ（`type` の行は不要）。設定ファイルは Claude Desktop を終了してから編集する（開いたままだと上書きされることがある）。Backlog を設定しない場合は、登録する課題の一覧が出るので手で登録する
+5. Cowork のタスクで「ドキュメント」の `minutes` フォルダを接続する。接続しないと、議事録を保存できず、前回の議事録も探せない
 6. `/` で出るメニューから `create-minutes` を選ぶか、会議メモの URL を貼って「議事録を作って（お試し）」と頼む
 
-アカウントに入れたプラグインは、Claude Code にも `/create-minutes:create-minutes` として自動で入ります。
+アカウントに入れたプラグインは、Claude Code にも `/create-minutes:create-minutes` として自動で入ります。パソコンに入れたスキル（`/create-minutes`）と中身は同じなので、どちらを使ってもかまいません。
 
 ## 使い方
 
@@ -135,6 +139,18 @@ Slack に共有しない場合は、Slack の引数を省略できます。
 **原因**: 登録した課題は、権限によっては削除できない。
 
 **直し方**: コメントを付けてクローズする。試すときは `--dry-run` を使い、本当に登録して確かめたいときは件名に「【テスト】」を付けて 1 件だけにする。
+
+### Cowork を開くと「最新のインストーラーで Claude Desktop をインストールする必要があります」と出る
+
+**原因**: winget などで古い形式の Claude Desktop を入れている。
+
+**直し方**: Claude Desktop をアンインストールし、公式サイト（https://claude.com/download）からダウンロードして入れ直す。
+
+### Cowork で「Backlog が接続されていないため…」と出る
+
+**原因**: Backlog の設定は VS Code（Claude Code）の `~/.claude.json` にしかなく、Cowork からは見えない。
+
+**直し方**: セットアップの「Claude Desktop（Cowork）で使う」の手順 4 のとおり、Claude Desktop の設定ファイルに Backlog MCP を書き足して再起動する。「設定」→「開発者」で backlog が「running」になっていれば使える。
 
 ### 登録前の一覧に「⚠ 似た課題あり」と出る
 
