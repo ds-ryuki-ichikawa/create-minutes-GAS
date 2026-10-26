@@ -1,7 +1,41 @@
 {
   "name": "create-minutes",
   "displayName": "議事録作成",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Google Meet の「Gemini によるメモ」から議事録を作り、社内の TODO を Backlog の課題と Google カレンダーのリマインドに登録します。",
-  "author": { "name": "市川瑠生" }
+  "author": { "name": "市川瑠生" },
+  "mcpServers": {
+    "backlog": {
+      "command": "C:\\Program Files\\nodejs\\npx.cmd",
+      "args": ["-y", "backlog-mcp-server"],
+      "env": {
+        "PATH": "C:\\Program Files\\nodejs;C:\\Windows\\system32;C:\\Windows;C:\\Windows\\System32\\WindowsPowerShell\\v1.0",
+        "BACKLOG_DOMAIN": "${user_config.backlog_domain}",
+        "BACKLOG_API_KEY": "${user_config.backlog_api_key}"
+      }
+    }
+  },
+  "userConfig": {
+    "backlog_project": {
+      "type": "string",
+      "title": "Backlog のプロジェクトキー",
+      "description": "TODO を課題として登録するプロジェクトのキー（例: IB_TASK）。空なら実行のたびに聞きます"
+    },
+    "save_folder": {
+      "type": "string",
+      "title": "議事録の保存先（Google ドライブ）",
+      "description": "議事録を保存する Google ドライブのフォルダの URL か ID。空ならパソコンの ドキュメント/minutes に保存します"
+    },
+    "backlog_domain": {
+      "type": "string",
+      "title": "Backlog のスペース",
+      "description": "Backlog の URL のドメイン部分（例: xxx.backlog.jp）。Backlog を使わないなら空のまま"
+    },
+    "backlog_api_key": {
+      "type": "string",
+      "title": "Backlog の API キー",
+      "description": "Backlog の「個人設定」→「API」で発行したキー。安全な保管場所に保存されます",
+      "sensitive": true
+    }
+  }
 }

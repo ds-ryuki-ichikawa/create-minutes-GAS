@@ -21,7 +21,8 @@ Google Docs の会議メモを読み込み、指定フォーマットで議事�
 | `--mention-users` | — | メンション対象のユーザー表示名（例: `西川,松下`）または ユーザー ID。カンマ区切り。省略時はメンションしない |
 | `--send-at` | — | 送信予約日時。柔軟な表現を受け付ける（後述）。`--slack-channel` を指定したときは必須 |
 | `--canvas-id` | — | 更新対象の Slack Canvas ID。省略時は新規作成 |
-| `--backlog-project` | — | TODO を課題登録する Backlog プロジェクトキー。省略時は `IB_TASK` |
+| `--backlog-project` | — | TODO を課題登録する Backlog プロジェクトキー。省略時は「設定の決め方」に従う（どこにもなければ登録の前に聞く） |
+| `--save-folder` | — | 議事録を保存する Google ドライブのフォルダの URL または ID。省略時は「設定の決め方」に従う（どこにもなければパソコンのフォルダに保存する） |
 | `--prev` | — | 前回の議事録。ローカルのファイルパス（`~/Documents/minutes/` 内ならファイル名だけでも可）または Google Docs の ID・URL。省略時は同じ名前の会議の議事録を自動で探す。`--prev none` で前回との比較をしない |
 | `--dry-run` | — | お試し実行。保存・Backlog 登録・カレンダー登録・Canvas・Slack 送信は行わず、実行予定の内容を表示するだけにする |
 
@@ -46,8 +47,25 @@ Google Docs の会議メモを読み込み、指定フォーマットで議事�
 Claude Code（VS Code・ターミナル）と Claude Desktop の Cowork のどちらでも動くように書いている。違いは次の 3 点。
 
 - **ツール名**: 手順に書いたツール名（`mcp__claude_ai_Google_Drive__read_file_content` など）は Claude Code での例。Cowork などでは名前が違うことがあるので、使えるツールの中から同じ機能のもの（Google ドライブのファイル読み込み、Backlog の課題検索・登録、Google カレンダーの予定一覧・作成など）を選んで使う。引数名は各ツールの定義に合わせる
-- **保存先フォルダ**: 議事録は `~/Documents/minutes/` に保存する（以下 `MINUTES_DIR`）。Cowork では、接続されたフォルダのうち `minutes` フォルダ（またはドキュメントフォルダの中の `minutes`）を `MINUTES_DIR` とする。読み書きできるフォルダがない場合は、ユーザーに「ドキュメントの minutes フォルダを接続してください」と伝えてから進める。接続されなければ、議事録を Cowork の成果物ファイルとして出力し、その場所を保存先として報告する。claude.ai のチャットや Web 版 Claude Code（claude.ai/code）のようにクラウドで動く環境では、`~/Documents/minutes/` に書いてもユーザーのパソコンには保存されない。この場合は「パソコンには保存されません」とはっきり伝え、議事録をダウンロードできるファイルとして出す（出せなければ本文をコピーできる形で表示する）。お試し実行の保存予定の表示でも同じように伝える
+- **保存先フォルダ**: `SAVE_FOLDER`（「設定の決め方」を参照）が決まっていれば、議事録は Google ドライブのそのフォルダに保存する。どの環境でも同じ場所に残るので、以下の扱いは不要。決まっていない場合は、議事録は `~/Documents/minutes/` に保存する（以下 `MINUTES_DIR`）。Cowork では、接続されたフォルダのうち `minutes` フォルダ（またはドキュメントフォルダの中の `minutes`）を `MINUTES_DIR` とする。読み書きできるフォルダがない場合は、ユーザーに「ドキュメントの minutes フォルダを接続してください」と伝えてから進める。接続されなければ、議事録を Cowork の成果物ファイルとして出力し、その場所を保存先として報告する。claude.ai のチャットや Web 版 Claude Code（claude.ai/code）のようにクラウドで動く環境では、`~/Documents/minutes/` に書いてもユーザーのパソコンには保存されない。この場合は「パソコンには保存されません」とはっきり伝え、議事録をダウンロードできるファイルとして出す（出せなければ本文をコピーできる形で表示する）。お試し実行の保存予定の表示でも同じように伝える
 - **Backlog**: Backlog のツールが使えない場合も処理を止めず、Step 9 の「Backlog が使えない場合」に従う
+
+---
+
+## 設定の決め方
+
+使う人や組織によって違う値は、次の順に探し、最初に見つかったものを使う。
+
+| 変数 | 1. 引数 | 2. ユーザー設定 | 3. 組織の初期値 |
+|------|---------|-----------------|-----------------|
+| `BACKLOG_PROJECT`（Backlog のプロジェクトキー） | `--backlog-project` | `${user_config.backlog_project}` | `references/settings.md` の「Backlog のプロジェクトキー」 |
+| `SAVE_FOLDER`（議事録を保存する Google ドライブのフォルダ） | `--save-folder` | `${user_config.save_folder}` | `references/settings.md` の「議事録の保存先」 |
+
+- ユーザー設定は、Claude Code でプラグインとして入れ、設定画面で入力したときだけ値が入る。値が空のときや、ドル記号と波かっこで囲まれた `user_config` の文字のまま残っているときは、設定されていないとみなして次を見る
+- 組織の初期値は、このスキルのフォルダにある `references/settings.md`（`${CLAUDE_SKILL_DIR}/references/settings.md`）に書く。値が空なら設定されていないとみなす
+- `SAVE_FOLDER` が URL の場合は、`/folders/{ID}` の `{ID}` 部分を取り出す
+- どこにもない場合、`BACKLOG_PROJECT` は空のままにして Step 9 でユーザーに聞く。`SAVE_FOLDER` は空のままにし、パソコンのフォルダに保存する
+- Backlog の API キーは、引数や `references/settings.md` には書かない。Claude Code ではプラグインのユーザー設定に入れ（安全な保管場所に保存される）、Cowork では Claude Desktop の設定で Backlog の接続に入れる
 
 ---
 
@@ -62,7 +80,8 @@ Claude Code（VS Code・ターミナル）と Claude Desktop の Cowork のど�
 - `RAW_USERS` ← `--mention-users` の値をカンマで分割した配列
 - `RAW_SEND_AT` ← `--send-at` の値（自然言語または日付文字列）
 - `CANVAS_ID` ← `--canvas-id` の値（省略時は空文字）
-- `BACKLOG_PROJECT` ← `--backlog-project` の値（省略時は `IB_TASK`）
+- `BACKLOG_PROJECT` ← 「設定の決め方」に従う（`--backlog-project` → ユーザー設定 → 組織の初期値。どこにもなければ空）
+- `SAVE_FOLDER` ← 「設定の決め方」に従う（`--save-folder` → ユーザー設定 → 組織の初期値。どこにもなければ空）
 - `DRY_RUN` ← `--dry-run` が指定されていれば true、なければ false
 - `SLACK_ENABLED` ← `--slack-channel` が指定されていれば true、なければ false
 - `PREV_SOURCE` ← `--prev` の値（省略時は空文字＝自動で探す。`none` なら前回との比較をしない）
@@ -129,7 +148,8 @@ Google ドライブのファイル読み込みツール（例: `mcp__claude_ai_G
 - `PREV_SOURCE` がファイルパスの場合: そのファイルを読み込む。ファイル名だけなら `MINUTES_DIR` から探す
 - `PREV_SOURCE` が空の場合（自動で探す）:
   - `DOC_TITLE` から Step 8 と同じ手順で `sanitized_title` を作る
-  - `MINUTES_DIR` から `{YYYY-MM-DD}_{sanitized_title}.md`（末尾に `_2`、`_3` … が付いたものも含む）を探し、日付が今回の会議日より前のものの中で最も新しいものを選ぶ（同じ日付が複数あれば末尾の番号が大きいもの）
+  - `SAVE_FOLDER` がある場合は、Google ドライブのファイル検索ツール（例: `mcp__claude_ai_Google_Drive__search_files`）で `parentId = '{SAVE_FOLDER}' and title contains '{sanitized_title}'` を検索し、タイトルが `{YYYY-MM-DD}_{sanitized_title}`（末尾に `_2`、`_3` … が付いたものも含む）のもののうち、日付が今回の会議日より前で最も新しいもの（同じ日付が複数あれば末尾の番号が大きいもの）を、Step 3 と同じツールで読み込む。検索結果が複数ページに分かれて返る（次のページのトークンが付いている）ときは、最後のページまで取得してから選ぶ。`PREV_FILE` にはそのファイルの URL を入れる
+  - `SAVE_FOLDER` がない場合は、`MINUTES_DIR` から `{YYYY-MM-DD}_{sanitized_title}.md`（末尾に `_2`、`_3` … が付いたものも含む）を探し、日付が今回の会議日より前のものの中で最も新しいものを選ぶ（同じ日付が複数あれば末尾の番号が大きいもの）
 - 見つからない・読み込めない場合は処理を止めずに `PREV_MINUTES` を空にし、「前回の議事録は見つかりませんでした（初回の会議として扱います）」と表示する
 - 見つかった場合は、本文を `PREV_MINUTES`、ファイルの場所を `PREV_FILE`、前回の開催日を `PREV_DATE` に格納し、「📎 前回の議事録：{PREV_FILE}（{PREV_DATE}）と比べます」と表示する
 
@@ -209,7 +229,16 @@ Step 3 で取得した元ドキュメントの本文を入力として、Step 4 
 
 ### Step 8: ローカルに保存する
 
-Step 6 のチェックで OK を受けた確定版を保存する。保存先は実行ディレクトリに関係なく `MINUTES_DIR`（「環境による違い」を参照）に固定する。
+Step 6 のチェックで OK を受けた確定版を保存する。`SAVE_FOLDER` があれば Google ドライブに、なければ `MINUTES_DIR`（「環境による違い」を参照）に保存する。ファイル名はどちらも下の 2 の手順で作る。
+
+**`SAVE_FOLDER` がある場合（Google ドライブに保存）:**
+
+- 同じフォルダに同じ名前のファイルがあるか、Google ドライブのファイル検索ツールで確かめる。検索結果が複数ページに分かれて返るときは、最後のページまで取得する（Google ドライブは同じ名前のファイルを作れてしまうため、見落とすと重複する）。あれば上書きせず、末尾に `_2`、`_3` …を付けて空いている名前にする（Google ドライブでは拡張子 `.md` は付けない）
+- Google ドライブのファイル作成ツール（例: `mcp__claude_ai_Google_Drive__create_file`）で、`parentId` に `SAVE_FOLDER`、`title` にファイル名、`textContent` に `MINUTES_MD`、`contentMimeType` に `text/markdown` を指定して作る（Google ドキュメントに変換される）
+- 作ったファイルの URL（`https://docs.google.com/document/d/{ID}/edit`）を `LOCAL_FILE_PATH` に格納する
+- フォルダが見つからない・書き込めない場合は、処理を止めてユーザーに伝え、パソコンのフォルダに保存するか聞く
+
+**`SAVE_FOLDER` がない場合（パソコンのフォルダに保存）:**
 
 1. `MINUTES_DIR` が存在しない場合は作成する（例: PowerShell なら `New-Item -ItemType Directory -Force "$env:USERPROFILE\Documents\minutes"`、bash なら `mkdir -p ~/Documents/minutes`）
 2. ファイル名: `{YYYY-MM-DD}_{sanitized_title}.md`（`YYYY-MM-DD` は会議日付）。日付はファイル名の先頭に 1 回だけ付ける。`sanitized_title` は `DOC_TITLE` から以下の順に作る:
@@ -225,6 +254,8 @@ Step 6 のチェックで OK を受けた確定版を保存する。保存先は
 ### Step 9: Backlog に課題を登録する
 
 `TODO_MD` のうち区分が「社内」の行を、`BACKLOG_PROJECT` の課題として登録する。社内の TODO が 0 件の場合はこのステップを飛ばす。
+
+`BACKLOG_PROJECT` が空の場合は、確認一覧を出す前に「どの Backlog プロジェクトに登録しますか？（プロジェクトキー）」と聞き、答えを `BACKLOG_PROJECT` に入れる。`DRY_RUN` が true の場合は聞かずに、プロジェクト名を「（プロジェクト未設定）」として一覧を表示する。
 
 - 区分が「社外」の行（お客様・取引先の作業）は社内の Backlog に登録しない。確認一覧に「登録しない TODO」として表示する
 - 区分が「不明」の行は ⚠ を付けて確認一覧に出し、登録するかどうかをユーザーに決めてもらう
@@ -441,7 +472,7 @@ Canvas URL は `https://app.slack.com/canvas/{CANVAS_ID}` として `CANVAS_URL`
 ```
 ✅ 議事録作成完了
 
-📄 ローカル保存先 : {LOCAL_FILE_PATH}（クラウドで動く環境では「パソコンには未保存：ダウンロード用のファイルを表示済み」）
+📄 保存先         : {LOCAL_FILE_PATH}（Google ドライブに保存した場合はその URL。クラウドで動く環境でパソコンに保存しようとした場合は「パソコンには未保存：ダウンロード用のファイルを表示済み」）
 📝 Backlog 課題   : {BACKLOG_COUNT} 件登録（{課題キーをカンマ区切り}）（Backlog が使えない場合は「未登録：手動登録用の一覧を表示済み」）
 📅 カレンダー     : {CALENDAR_COUNT} 件のリマインドを登録（Google Calendar が使えない場合は「未登録：手動登録用の一覧を表示済み」）
 🎨 Canvas URL    : {CANVAS_URL}（`--slack-channel` 指定なしの場合は「—」）
