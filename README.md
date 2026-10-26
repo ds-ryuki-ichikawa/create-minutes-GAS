@@ -55,6 +55,20 @@ Claude Desktop は公式サイト（https://claude.com/download）から入れ�
 
 アカウントに入れたプラグインは、Claude Code にも `/create-minutes:create-minutes` として自動で入ります。パソコンに入れたスキル（`/create-minutes`）と中身は同じなので、どちらを使ってもかまいません。
 
+### Web 版（claude.ai/new・claude.ai/code）で使う
+
+アカウントに入れたプラグインは、Web 版のチャット（claude.ai/new）と Web 版 Claude Code（claude.ai/code）でも使えます。ただし、次の 2 点が Desktop と違うため、議事録を残す用途には Desktop をおすすめします。
+
+- **Backlog は使えない**：Backlog の接続はパソコンの中で動くため、Web 版からは届かない。登録する課題の一覧が出るので手で登録する
+- **パソコンに保存されない**：議事録はクラウドの一時的な場所に作られる。ダウンロードできるファイルとして出るので、必要なら保存する
+
+| 使う場所 | 議事録の保存先 | Backlog |
+|---|---|---|
+| VS Code・Desktop の Code タブ | パソコンの `~/Documents/minutes/` | 使える |
+| Desktop の Cowork | つないだ `minutes` フォルダ | 使える（設定ファイルに追加した場合） |
+| claude.ai/new | クラウドの一時的な場所（ダウンロードして保存） | 使えない |
+| claude.ai/code | クラウドの一時的な場所（時間がたつと消える） | 使えない |
+
 ## 使い方
 
 まずはお試し実行（保存・登録・送信を一切しない）で確認するのがおすすめです。
