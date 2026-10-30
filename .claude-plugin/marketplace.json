@@ -4,7 +4,7 @@
   "owner": { "name": "市川瑠生" },
   "plugins": [
     {
-      "name": "create-minutes",
+      "name": "task-get",
       "source": "./",
       "description": "Google Meet の会議メモから議事録を作り、TODO を Backlog とカレンダーに登録する"
     }

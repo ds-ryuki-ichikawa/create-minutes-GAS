@@ -1,11 +1,11 @@
 ---
-name: create-minutes
+name: task-get
 description: Google Meet の「Gemini によるメモ」（Google ドキュメント）から議事録を作り、社内の TODO を Backlog の課題と Google カレンダーのリマインドに登録する。会議メモの URL を渡されたときや、会議の議事録・TODO の作成を頼まれたときに使う（URL がなければ最近の会議メモから選んでもらう）。
 ---
 
 # 議事録作成
 
-Claude Code では `/create-minutes` と入力すると実行する。Claude Desktop の Cowork では、`/` で出るメニューから `create-minutes` を選ぶか、議事録の作成を頼むと実行する。会議メモの URL がなくても、最近の会議メモを探して候補を出す。  
+Claude Code では `/task-get` と入力すると実行する。Claude Desktop の Cowork では、`/` で出るメニューから `task-get` を選ぶか、議事録の作成を頼むと実行する。会議メモの URL がなくても、最近の会議メモを探して候補を出す。  
 Google Docs の会議メモを読み込み、指定フォーマットで議事録・TODO を生成し、人が 1 回確認・承認したら、ローカル保存・Backlog 課題登録・Google カレンダーへのリマインド登録・Slack 予約送信・Canvas 登録をまとめて行う。
 
 引数: `$ARGUMENTS`
@@ -48,7 +48,7 @@ Claude Code（VS Code・ターミナル）と Claude Desktop の Cowork のど�
 
 - **ツール名**: 手順に書いたツール名（`mcp__claude_ai_Google_Drive__read_file_content` など）は Claude Code での例。Cowork などでは名前が違うことがあるので、使えるツールの中から同じ機能のもの（Google ドライブのファイル検索・読み込み、Backlog の課題検索・登録、Google カレンダーの予定一覧・作成など）を選んで使う。引数名は各ツールの定義に合わせる
 - **保存先フォルダ**: `SAVE_FOLDER`（「設定の決め方」を参照）が決まっていれば、議事録は Google ドライブのそのフォルダに保存する。どの環境でも同じ場所に残るので、以下の扱いは不要。決まっていない場合は、議事録は `~/Documents/minutes/` に保存する（以下 `MINUTES_DIR`）。Cowork では、接続されたフォルダのうち `minutes` フォルダ（またはドキュメントフォルダの中の `minutes`）を `MINUTES_DIR` とする。読み書きできるフォルダがない場合は、ユーザーに「ドキュメントの minutes フォルダを接続してください」と伝えてから進める。接続されなければ、議事録を Cowork の成果物ファイルとして出力し、その場所を保存先として報告する。claude.ai のチャットや Web 版 Claude Code（claude.ai/code）のようにクラウドで動く環境では、`~/Documents/minutes/` に書いてもユーザーのパソコンには保存されない。この場合は「パソコンには保存されません」とはっきり伝え、議事録をダウンロードできるファイルとして出す（出せなければ本文をコピーできる形で表示する）。お試し実行の保存予定の表示でも同じように伝える
-- **Backlog**: Backlog のツールが使えない場合も処理を止めず、Step 7 の「Backlog が使えない場合」に従う。Backlog の接続は複数あることがある（例: プラグインに入っている `plugin:create-minutes:backlog` と、Claude Desktop の設定ファイルや拡張機能で入れた `backlog`）。どれかが「接続に失敗した」と通知されても、ほかの Backlog のツールがあればそれを使う。使えるかどうかは通知だけで決めず、Backlog のツール（例: スペース情報の取得）を実際に呼んで確かめる
+- **Backlog**: Backlog のツールが使えない場合も処理を止めず、Step 7 の「Backlog が使えない場合」に従う。Backlog の接続は複数あることがある（例: プラグインに入っている `plugin:task-get:backlog` と、Claude Desktop の設定ファイルや拡張機能で入れた `backlog`）。どれかが「接続に失敗した」と通知されても、ほかの Backlog のツールがあればそれを使う。使えるかどうかは通知だけで決めず、Backlog のツール（例: スペース情報の取得）を実際に呼んで確かめる
 - **答え方（ボタン）**: 「ユーザーへの聞き方」のとおり、選択肢を出すツールがある環境ではボタンで、ない環境では番号で答えてもらう
 
 ---
@@ -120,13 +120,14 @@ Step 2 で Slack のツールが使えない場合も中断せず、チャンネ
 
 Google ドライブのファイル検索ツール（例: `mcp__claude_ai_Google_Drive__search_files`）で探す。本文は不要で量も多いため、`excludeContentSnippets` は true にする。
 
-- 基本の条件: `title contains 'Gemini によるメモ' and mimeType = 'application/vnd.google-apps.document' and createdTime > '{7 日前の 0:00（例: 2026-10-23T00:00:00+09:00）}'`
+- 基本の条件: `title contains 'Gemini によるメモ' and mimeType = 'application/vnd.google-apps.document' and createdTime > '{今日の 0:00（例: 2026-10-30T00:00:00+09:00）}'`
+  - 議事録は会議が終わってすぐに作ることが多いため、まず今日の会議メモだけを探す
   - `mimeType` で Google ドキュメントだけに絞る。絞らないと、自分のドライブにある同じメモのショートカットも出てきて、候補が二重になる
-- 7 日以内に 1 件もなければ、`createdTime` を 30 日前の 0:00 に広げてもう一度探す（会議のない週もあるため）
+- 今日の会議メモが 1 件もなければ、`createdTime` を 7 日前の 0:00 に広げてもう一度探す（前日の夕方の会議や、週明けにまとめて作る場合のため）
 - ユーザーのメッセージに手がかりがあれば条件に足す:
   - 会議名 → `title contains '{会議名}'`
   - 参加者の名前 → `fullText contains '{名前}'`
-  - 日付 → その日の 0:00 から翌日 0:00 までの `createdTime` の範囲（7 日・30 日の条件は外す）
+  - 日付 → その日の 0:00 から翌日 0:00 までの `createdTime` の範囲（今日・7 日の条件は外す）
 - 検索結果が複数ページに分かれて返る（次のページのトークンが付いている）ときは、最後のページまで取得する
 
 **2. 候補を決める**
@@ -289,7 +290,7 @@ Backlog のツールが使えない（コネクタ未接続・未認可。「環
 会議: {DOC_TITLE（「 - Gemini によるメモ」を除く）}
 開催日: {会議日付}
 元メモ: https://docs.google.com/document/d/{DOC_ID}/edit
-（/create-minutes により自動登録）
+（/task-get により自動登録）
 ```
 
 #### 7-2. カレンダーに入れるリマインド
@@ -311,7 +312,7 @@ Google Calendar のツールが使えない（コネクタ未接続・未認可�
 会議: {DOC_TITLE（「 - Gemini によるメモ」を除く）}
 Backlog: {Step 10 で登録した課題の URL。登録していなければ省く}
 元メモ: https://docs.google.com/document/d/{DOC_ID}/edit
-（/create-minutes により自動登録）
+（/task-get により自動登録）
 ```
 
 - 招待: TODO の担当者を、メールアドレスがわかる場合だけ招待する
