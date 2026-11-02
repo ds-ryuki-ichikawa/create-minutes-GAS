@@ -1,10 +1,10 @@
 {
-  "name": "create-minutes-local",
+  "name": "meeting-tasks-local",
   "description": "議事録作成プラグインを Claude Code に入れるためのマーケットプレイス",
   "owner": { "name": "市川瑠生" },
   "plugins": [
     {
-      "name": "task-get",
+      "name": "meeting-tasks",
       "source": "./",
       "description": "Google Meet の会議メモから議事録を作り、TODO を Backlog とカレンダーに登録する"
     }

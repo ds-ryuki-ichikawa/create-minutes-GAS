@@ -1,4 +1,4 @@
-# task-get（議事録作成）
+# meeting-tasks（議事録作成）
 
 Google Meet の「Gemini によるメモ」から議事録を作り、TODO を Backlog に課題登録するスキルです。Claude Code（VS Code・Claude Desktop の Code タブ）と Claude Desktop の Cowork のどちらでも使えます。
 
@@ -12,22 +12,20 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 4. 承認されたら、確定版を保存する（保存先の Google ドライブのフォルダを設定していればそこに、なければパソコンの `~/Documents/minutes/` に）
 5. TODO を Backlog に課題登録する（社内の TODO だけ。お客様など社外の TODO は登録しない）
 6. TODO の期限を Google カレンダーにリマインド登録する（期限日の終日予定・前日 9:00 に通知。未接続時は手動登録用の一覧を表示）
-7. Slack に Canvas 作成・予約送信する（任意・未検証。Slack 未接続時は手動投稿用のメッセージを表示）
 
 人が操作するのは、会議メモを選ぶ（URL を渡さなかったとき）ことと、確認・承認の 1 回だけです。
-
-> **Slack 連携は未検証です。** 今回の要件には含まれなかったため、Slack と接続しての動作確認はしていません（IB_TASK-114）。手順はスキルに残してあり、`--slack-channel` を指定したときだけ動きます。使う場合は、まず自分宛ての DM で動作を確認してください。
 
 ## ファイル構成
 
 | ファイル | 内容 |
 |---|---|
-| `skills/task-get/SKILL.md` | スキル本体（実行手順） |
-| `skills/task-get/references/minutes-template.md` | 議事録の変換プロンプト（書き方の指示） |
-| `skills/task-get/references/settings.md` | 組織の初期値（Backlog のプロジェクト・議事録の保存先）。リポジトリでは空 |
+| `skills/meeting-tasks/SKILL.md` | スキル本体（実行手順） |
+| `skills/meeting-tasks/references/minutes-template.md` | 議事録の変換プロンプト（書き方の指示） |
+| `skills/meeting-tasks/references/settings.md` | 組織の初期値（Backlog のプロジェクト・議事録の保存先）。リポジトリでは空 |
 | `.claude-plugin/plugin.json` | プラグインの情報（ユーザー設定の項目と Backlog MCP の設定を含む） |
 | `.claude-plugin/marketplace.json` | Claude Code でプラグインとして入れるときに使う（Cowork 用の zip には入れない） |
 | `scripts/build-cowork-zip.sh` | Cowork にアップロードする zip を作る |
+| `scripts/backlog-mcp.mjs` | プラグインの Backlog の接続（Backlog MCP）を、Windows・Mac に合わせて起動する |
 | `GUIDE.md` | エンジニアでない人向けの使い方ガイド |
 
 ## 設定（Backlog のプロジェクト・保存先・API キー）
@@ -40,7 +38,7 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 | 議事録の保存先（Google ドライブのフォルダ） | `--save-folder` | `save_folder` | `references/settings.md` | パソコンの `~/Documents/minutes/` に保存 |
 
 - **ユーザー設定**：Claude Code でプラグインとして入れたときに、各自が入力する。Cowork と Web 版には入力する画面がないため、組織の初期値か引数を使う
-- **組織の初期値**：`skills/task-get/references/settings.md` の `：` の後ろに書く。プラグインを入れた全員に同じ値が配られるので、組織やお客様に配る前にその組織の値を書いておく。リポジトリでは空にしてある
+- **組織の初期値**：`skills/meeting-tasks/references/settings.md` の `：` の後ろに書く。プラグインを入れた全員に同じ値が配られるので、組織やお客様に配る前にその組織の値を書いておく。リポジトリでは空にしてある
 - **Backlog の API キー**：引数と `settings.md` には書かない（全員に配られてしまう）。Claude Code ではユーザー設定の `backlog_api_key` に入れる（安全な保管場所に保存され、画面には出ない）。Cowork では Claude Desktop の設定ファイルに入れる
 - **保存先を Google ドライブにすると**、どの環境（VS Code・Desktop・Web 版）で作っても同じフォルダに残り、前回の議事録もそのフォルダから探せる。フォルダの URL（`https://drive.google.com/drive/folders/…`）をそのまま書いてよい
 
@@ -54,10 +52,10 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 
    ```
    claude plugin marketplace add {このリポジトリのフォルダ}
-   claude plugin install task-get@create-minutes-local
+   claude plugin install meeting-tasks@meeting-tasks-local
    ```
 
-2. Claude Code を開き、`/plugin configure task-get@create-minutes-local` で設定を入力する
+2. Claude Code を開き、`/plugin configure meeting-tasks@meeting-tasks-local` で設定を入力する
    - `backlog_project`：Backlog のプロジェクトキー（例: `IB_TASK`）
    - `save_folder`：議事録を保存する Google ドライブのフォルダの URL（空ならパソコンに保存）
    - `backlog_domain`：Backlog のドメイン（例: `xxx.backlog.jp`）
@@ -66,13 +64,12 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 3. Claude Code で次のコネクタを使えるようにする
    - Google Drive（必須）
    - Google Calendar（任意。未接続でも動く）
-   - Slack（任意・未検証。未接続でも動く）
 
-4. Claude Code を開き直すと `/task-get:task-get` が使えるようになる
+4. Claude Code を開き直すと `/meeting-tasks:meeting-tasks` が使えるようになる
 
-Backlog の接続（Backlog MCP）はプラグインに入っていて、上の `backlog_domain` と `backlog_api_key` で動きます。Windows 用の書き方（`C:\Program Files\nodejs\npx.cmd`）なので、Node.js をふつうに入れた Windows で動きます。すでに自分で Backlog MCP を設定してある場合は、同じ内容のものは二重に起動されず、自分の設定がそのまま使われます。
+Backlog の接続（Backlog MCP）はプラグインに入っていて、上の `backlog_domain` と `backlog_api_key` で動きます。Node.js が入っていれば（ターミナルで `node -v` が動けば）、`scripts/backlog-mcp.mjs` が Windows・Mac に合わせて起動します。Mac では動作を確かめていません。すでに自分で Backlog MCP を設定してある場合は、同じ内容のものは二重に起動されず、自分の設定がそのまま使われます。
 
-スキルのフォルダだけをコピーして使うこともできます（`skills/task-get` をフォルダごと `~/.claude/skills/task-get` にコピーすると `/task-get` で動く）。この場合はユーザー設定が使えないので、引数か `settings.md` で決めます。Backlog MCP も自分で設定します（下の「Backlog MCP が『Connection closed』でつながらない」を参照）。以前の版で `~/.claude/commands/create-minutes.md` と `~/.claude/templates/minutes-template.md` を置いていた場合は、その 2 つを消してください。以前の名前（`create-minutes`）で `~/.claude/skills/create-minutes` に入れていた場合も、そのフォルダを消してください。
+スキルのフォルダだけをコピーして使うこともできます（`skills/meeting-tasks` をフォルダごと `~/.claude/skills/meeting-tasks` にコピーすると `/meeting-tasks` で動く）。この場合はユーザー設定が使えないので、引数か `settings.md` で決めます。Backlog MCP も自分で設定します（下の「Backlog MCP が『Connection closed』でつながらない」を参照）。以前の版で `~/.claude/commands/create-minutes.md` と `~/.claude/templates/minutes-template.md` を置いていた場合は、その 2 つを消してください。以前の名前（`create-minutes`・`task-get`）で `~/.claude/skills/` に入れていた場合も、そのフォルダを消してください。
 
 Claude Desktop の Code タブも Claude Code なので、上の準備をしてあればそのまま使えます（スキルと Backlog の設定を VS Code 版と共有します）。
 
@@ -80,7 +77,7 @@ Claude Desktop の Code タブも Claude Code なので、上の準備をして�
 
 Claude Desktop は公式サイト（https://claude.com/download）から入れてください。winget で入れると古い形式になり、Cowork が使えません。
 
-1. 組織の初期値を決める場合は、`skills/task-get/references/settings.md` に Backlog のプロジェクトキーと保存先のフォルダの URL を書く（Cowork にはユーザー設定の画面がないため、ここに書いた値が使われる）
+1. 組織の初期値を決める場合は、`skills/meeting-tasks/references/settings.md` に Backlog のプロジェクトキーと保存先のフォルダの URL を書く（Cowork にはユーザー設定の画面がないため、ここに書いた値が使われる）
 2. コミットしてから、Git Bash で次を実行して zip を作る
 
    ```
@@ -89,13 +86,13 @@ Claude Desktop は公式サイト（https://claude.com/download）から入れ�
 
    - zip の `plugin.json` からは、プラグインの Backlog の接続（`mcpServers`）とユーザー設定の項目（`userConfig`）を外している。Cowork ではユーザー設定を入力できないため、入れたままだと Backlog の接続が必ず失敗し、「Backlog の接続に失敗しています」と出る
    - `settings.md` に書いた値をコミットしたくない場合は、値を書いた `settings.md` を別の場所に置き、`scripts/build-cowork-zip.sh {出力する zip} {その settings.md}` とする
-3. Claude Desktop の「Customize」→「Plugins」→「Add」→「Upload plugin」で zip を選ぶ。以前の名前（`create-minutes`）のプラグインを入れている場合は、別のプラグインとして並ぶので、古いほうを削除する
+3. Claude Desktop の「Customize」→「Plugins」→「Add」→「Upload plugin」で zip を選ぶ。以前の名前（`create-minutes`・`task-get`）のプラグインを入れている場合は、別のプラグインとして並ぶので、古いほうを削除する
 4. 「Customize」→「Connectors」で Google Drive と Google Calendar を接続する
-5. Backlog を使う場合は、Claude Desktop の設定ファイル（`%APPDATA%\Claude\claude_desktop_config.json`）に Backlog MCP を書き足し、Claude Desktop を再起動する。中身は下の「Backlog MCP が『Connection closed』でつながらない」の例と同じ（`type` の行は不要）。設定ファイルは Claude Desktop を終了してから編集する（開いたままだと上書きされることがある）。Backlog を設定しない場合は、登録する課題の一覧が出るので手で登録する
+5. Backlog を使う場合は、Claude Desktop の設定ファイル（Windows は `%APPDATA%\Claude\claude_desktop_config.json`、Mac は `~/Library/Application Support/Claude/claude_desktop_config.json`）に Backlog MCP を書き足し、Claude Desktop を再起動する。中身は下の「Backlog MCP が『Connection closed』でつながらない」の例と同じ（`type` の行は不要）。設定ファイルは Claude Desktop を終了してから編集する（開いたままだと上書きされることがある）。Backlog を設定しない場合は、登録する課題の一覧が出るので手で登録する
 6. 保存先の Google ドライブのフォルダを決めていない場合は、Cowork のタスクで「ドキュメント」の `minutes` フォルダを接続する。接続しないと、議事録を保存できず、前回の議事録も探せない
-7. `/` で出るメニューから `task-get` を選ぶか、「議事録を作って（お試し）」と頼む（最近の会議メモが候補として出るので、番号で選ぶ。会議メモの URL を貼ってもよい）
+7. `/` で出るメニューから `meeting-tasks` を選ぶか、「議事録を作って（お試し）」と頼む（最近の会議メモが候補として出るので、番号で選ぶ。会議メモの URL を貼ってもよい）
 
-アカウントに入れたプラグインは、Claude Code にも `/task-get:task-get` として自動で入ります。ただし、Claude Code で同じ名前のプラグインを入れている場合は、Claude Code で入れたほうが使われます。
+アカウントに入れたプラグインは、Claude Code にも `/meeting-tasks:meeting-tasks` として自動で入ります。ただし、Claude Code で同じ名前のプラグインを入れている場合は、Claude Code で入れたほうが使われます。
 
 ### Web 版（claude.ai/new・claude.ai/code）で使う
 
@@ -118,21 +115,21 @@ Claude Desktop は公式サイト（https://claude.com/download）から入れ�
 いちばん簡単な使い方は、引数なしで実行することです。最近の会議メモが候補として出るので、選ぶだけで始められます。
 
 ```
-/task-get
+/meeting-tasks
 ```
 
 Cowork や Web 版では、「議事録を作って」と頼むだけで同じように動きます。「10/2 の西川さんとの MTG」のように会議名・日付・参加者を添えると、その会議メモを探します。
 
-まずはお試し実行（保存・登録・送信を一切しない）で確認するのがおすすめです。
+まずはお試し実行（保存・登録を一切しない）で確認するのがおすすめです。
 
 ```
-/task-get --dry-run
+/meeting-tasks --dry-run
 ```
 
-問題なければ `--dry-run` を外して本番実行します。会議メモを決めて実行したいとき、Slack に共有したいときは、引数で指定します。
+問題なければ `--dry-run` を外して本番実行します。会議メモを決めて実行したいときは、引数で指定します。
 
 ```
-/task-get --doc-id {Google DocsのURLまたはID} --slack-channel {チャンネル名} --mention-users {名前} --send-at 明日9時
+/meeting-tasks --doc-id {Google DocsのURLまたはID}
 ```
 
 ### 主な引数
@@ -140,23 +137,18 @@ Cowork や Web 版では、「議事録を作って」と頼むだけで同じ�
 | 引数 | 必須 | 説明 |
 |---|:---:|---|
 | `--doc-id` | — | Gemini によるメモの URL または ID（省略すると、最近の会議メモから選ぶ） |
-| `--slack-channel` | — | 通知先チャンネル名または ID（省略すると Slack への共有をしない） |
-| `--mention-users` | — | メンションする人（カンマ区切り） |
-| `--send-at` | — | 送信予約日時（例: `明日9時`、`5/15 9:00`）。`--slack-channel` を指定したときは必須 |
 | `--backlog-project` | — | 課題登録先のプロジェクトキー（省略時は「設定」に従う。どこにもなければ登録の前に聞く） |
 | `--save-folder` | — | 議事録を保存する Google ドライブのフォルダの URL または ID（省略時は「設定」に従う。どこにもなければパソコンに保存） |
-| `--canvas-id` | — | 更新する Slack Canvas の ID（省略時は新規作成） |
 | `--prev` | — | 前回の議事録（ファイルパスか Google Docs の ID）。省略時は保存先（Google ドライブのフォルダか `~/Documents/minutes/`）から同じ名前の会議を自動で探す。`none` で比較しない |
 | `--dry-run` | — | お試し実行 |
 
-詳しくは `skills/task-get/SKILL.md` を参照してください。
+詳しくは `skills/meeting-tasks/SKILL.md` を参照してください。
 
 ## 注意
 
 - Backlog に登録した課題は、権限によっては削除できません。承認すると Backlog とカレンダーにまとめて登録されるので、確認の画面をよく見てから承認してください
-- Slack に送るメッセージには、議事録の「非公開情報」は含めません
 - カレンダーの招待に使う担当者のメールアドレスは Backlog から取れないため、確認の画面でチャットから伝えてください（伝えなければ招待なしで登録します）
-- スキルを修正したら、`.claude-plugin/plugin.json` の `version` を上げてから、Claude Code では `claude plugin update task-get@create-minutes-local` で入れ直してください（スキルのフォルダをコピーして使っている場合は、コピーし直す）。Cowork で使っている場合は、プラグインもアップロードし直してください
+- スキルを修正したら、`.claude-plugin/plugin.json` の `version` を上げてから、Claude Code では `claude plugin update meeting-tasks@meeting-tasks-local` で入れ直してください（スキルのフォルダをコピーして使っている場合は、コピーし直す）。Cowork で使っている場合は、プラグインもアップロードし直してください
 - `settings.md` に API キーやパスワードを書かないでください。プラグインを入れた全員に配られます
 
 ## 困ったとき
@@ -181,6 +173,8 @@ Cowork や Web 版では、「議事録を作って」と頼むだけで同じ�
   }
 }
 ```
+
+上の例は Windows 用です。Mac では `command` を `npx` にし、`PATH` の行を消します（Mac では確かめていません）。プラグインとして入れた Backlog の接続も、Node.js が見えていないと同じエラーになります。そのときは VS Code をすべて閉じてから開き直してください。
 
 ### コネクタを許可したのに使えない
 

@@ -10,7 +10,7 @@ cd "$(dirname "$0")/.."
 top=$(git rev-parse --show-toplevel)
 prefix=$(git rev-parse --show-prefix)  # リポジトリの中でのこのフォルダの位置（いちばん上なら空）
 
-out="${1:-task-get-plugin.zip}"
+out="${1:-meeting-tasks-plugin.zip}"
 settings="${2:-}"
 
 manifest=$(git show "HEAD:${prefix}.claude-plugin/plugin.json" | node -e '
@@ -22,8 +22,8 @@ process.stdout.write(JSON.stringify(p, null, 2));')
 args=(--format=zip --add-virtual-file=".claude-plugin/plugin.json:$manifest")
 paths=(skills)
 if [ -n "$settings" ]; then
-  args+=(--add-virtual-file="skills/task-get/references/settings.md:$(cat "$settings")")
-  paths+=(":(exclude)skills/task-get/references/settings.md")
+  args+=(--add-virtual-file="skills/meeting-tasks/references/settings.md:$(cat "$settings")")
+  paths+=(":(exclude)skills/meeting-tasks/references/settings.md")
 fi
 
 # サブフォルダの中で git archive すると、追加したファイルにだけフォルダ名が付いてしまうので、

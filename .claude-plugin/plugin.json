@@ -1,15 +1,14 @@
 {
-  "name": "task-get",
+  "name": "meeting-tasks",
   "displayName": "議事録作成",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Google Meet の「Gemini によるメモ」から議事録を作り、社内の TODO を Backlog の課題と Google カレンダーのリマインドに登録します。",
   "author": { "name": "市川瑠生" },
   "mcpServers": {
     "backlog": {
-      "command": "C:\\Program Files\\nodejs\\npx.cmd",
-      "args": ["-y", "backlog-mcp-server"],
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/backlog-mcp.mjs"],
       "env": {
-        "PATH": "C:\\Program Files\\nodejs;C:\\Windows\\system32;C:\\Windows;C:\\Windows\\System32\\WindowsPowerShell\\v1.0",
         "BACKLOG_DOMAIN": "${user_config.backlog_domain}",
         "BACKLOG_API_KEY": "${user_config.backlog_api_key}"
       }
