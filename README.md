@@ -26,7 +26,8 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 | `.claude-plugin/marketplace.json` | Claude Code でプラグインとして入れるときに使う（Cowork 用の zip には入れない） |
 | `scripts/build-cowork-zip.sh` | Cowork にアップロードする zip を作る |
 | `skills/meeting-tasks/scripts/backlog-mcp.mjs` | Backlog の接続（Backlog MCP）を、Windows・Mac に合わせて起動する |
-| `skills/meeting-tasks/scripts/meeting-log.mjs` | 使った記録（確認・承認の時間、TODO の数、似た課題で止めた数）を残し、集計する |
+| `skills/meeting-tasks/references/run-log.md` | テスト用。使った記録を残す手順（`--log` のときだけ読む） |
+| `skills/meeting-tasks/scripts/meeting-log.mjs` | テスト用。使った記録（確認・承認の時間、TODO の数、似た課題で止めた数）を残し、集計する |
 | `GUIDE.md` | エンジニアでない人向けの使い方ガイド |
 | `INSTALL.md` | 導入・操作手順書（動作環境、Claude Code・Cowork への入れ方、操作手順） |
 | `MAC-CHECK.md` | Mac で動かすときに確かめる項目（チェックリスト） |
@@ -144,12 +145,17 @@ Cowork や Web 版では、「議事録を作って」と頼むだけで同じ�
 | `--save-folder` | — | 議事録を保存する Google ドライブのフォルダの URL または ID（省略時は「設定」に従う。どこにもなければパソコンに保存） |
 | `--prev` | — | 前回の議事録（ファイルパスか Google Docs の ID）。省略時は保存先（Google ドライブのフォルダか `~/Documents/minutes/`）から同じ名前の会議を自動で探す。`none` で比較しない |
 | `--dry-run` | — | お試し実行 |
+| `--log` | — | テスト用。使った記録を残す（「使った記録と試算（テスト用）」を参照） |
 
 詳しくは `skills/meeting-tasks/SKILL.md` を参照してください。
 
-## 使った記録と試算
+## 使った記録と試算（テスト用）
 
-本番で使うたびに、次を記録ファイル（`~/Documents/minutes/meeting-tasks-log.csv`。Cowork ではつないだ `minutes` フォルダの中）に 1 行ずつ残します。お試し実行は記録しません。
+試用期間に、使い方を見直して Backlog の「試算」を実際の数字に入れ替えるための機能です。ふだんは動きません。次のどれかでオンにしたときだけ、本番で使うたびに記録ファイル（`~/Documents/minutes/meeting-tasks-log.csv`。Cowork ではつないだ `minutes` フォルダの中）に 1 行ずつ残します。お試し実行は記録しません。
+
+- コマンドに `--log` を付ける（例：`/meeting-tasks --log`）
+- Cowork などでは「議事録を作って（記録あり）」と頼む
+- 試用期間のあいだずっと残すなら、`skills/meeting-tasks/references/settings.md` の「使った記録を残す」に `する` と書く（試用が終わったら消す）
 
 | 記録すること | 測り方 |
 |---|---|

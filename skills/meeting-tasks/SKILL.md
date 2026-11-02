@@ -21,6 +21,7 @@ Google Docs の会議メモを読み込み、指定フォーマットで議事�
 | `--save-folder` | — | 議事録を保存する Google ドライブのフォルダの URL または ID。省略時は「設定の決め方」に従う（どこにもなければパソコンのフォルダに保存する） |
 | `--prev` | — | 前回の議事録。ローカルのファイルパス（`~/Documents/minutes/` 内ならファイル名だけでも可）または Google Docs の ID・URL。省略時は同じ名前の会議の議事録を自動で探す。`--prev none` で前回との比較をしない |
 | `--dry-run` | — | お試し実行。保存・Backlog 登録・カレンダー登録は行わず、実行予定の内容を表示するだけにする |
+| `--log` | — | テスト用。使った記録（確認・承認の時間、TODO の数、似た課題で止めた数）を残す（Step 13）。省略時は「設定の決め方」に従う（どこにもなければ記録しない） |
 
 ---
 
@@ -63,6 +64,7 @@ Claude Code（VS Code・ターミナル）と Claude Desktop の Cowork のど�
 |------|---------|-----------------|-----------------|
 | `BACKLOG_PROJECT`（Backlog のプロジェクトキー） | `--backlog-project` | `${user_config.backlog_project}` | `references/settings.md` の「Backlog のプロジェクトキー」 |
 | `SAVE_FOLDER`（議事録を保存する Google ドライブのフォルダ） | `--save-folder` | `${user_config.save_folder}` | `references/settings.md` の「議事録の保存先」 |
+| `LOG_RUN`（使った記録を残すか。テスト用） | `--log` | — | `references/settings.md` の「使った記録を残す」が「する」 |
 
 - ユーザー設定は、Claude Code でプラグインとして入れ、設定画面で入力したときだけ値が入る。値が空のときや、ドル記号と波かっこで囲まれた `user_config` の文字のまま残っているときは、設定されていないとみなして次を見る
 - 組織の初期値は、このスキルのフォルダにある `references/settings.md`（`${CLAUDE_SKILL_DIR}/references/settings.md`）に書く。値が空なら設定されていないとみなす
@@ -74,7 +76,7 @@ Claude Code（VS Code・ターミナル）と Claude Desktop の Cowork のど�
 
 ## 実行手順
 
-全体の流れ: 会議メモを決める（Step 1〜2）→ 読み込んで議事録を作る（Step 3〜5）→ 登録内容を準備する（Step 6〜7）→ **人が 1 回確認・承認する（Step 8）** → 保存・登録をまとめて行う（Step 9〜11）→ 完了報告（Step 12）→ 記録を残す（Step 13）。人に聞くのは Step 8 の承認（と、必要なときの会議メモの選択・プロジェクトキー）だけにする。
+全体の流れ: 会議メモを決める（Step 1〜2）→ 読み込んで議事録を作る（Step 3〜5）→ 登録内容を準備する（Step 6〜7）→ **人が 1 回確認・承認する（Step 8）** → 保存・登録をまとめて行う（Step 9〜11）→ 完了報告（Step 12）→ 記録を残す（Step 13。テスト用で、`LOG_RUN` が true のときだけ）。人に聞くのは Step 8 の承認（と、必要なときの会議メモの選択・プロジェクトキー）だけにする。
 
 ### Step 1: 引数をパースする
 
@@ -84,6 +86,7 @@ Claude Code（VS Code・ターミナル）と Claude Desktop の Cowork のど�
 - `BACKLOG_PROJECT` ← 「設定の決め方」に従う（`--backlog-project` → ユーザー設定 → 組織の初期値。どこにもなければ空）
 - `SAVE_FOLDER` ← 「設定の決め方」に従う（`--save-folder` → ユーザー設定 → 組織の初期値。どこにもなければ空）
 - `DRY_RUN` ← `--dry-run` が指定されていれば true、なければ false
+- `LOG_RUN` ← `--log` が指定されているか、メッセージに「記録あり」とあれば true。なければ「設定の決め方」に従う（どこにもなければ false）
 - `PREV_SOURCE` ← `--prev` の値（省略時は空文字＝自動で探す。`none` なら前回との比較をしない）
 
 **`DRY_RUN` が true の場合:**  
@@ -317,13 +320,7 @@ Step 9 の手順で、議事録を保存するファイル名と場所を決め�
 - 反映して解消した要確認事項は `CHECK_NOTES` から消す
 - 要確認事項が残ったまま承認された場合は、聞き直さずに、残った項目を `MINUTES_MD` の「決まっていないこと」に足してから Step 9 へ進む（各項目の末尾に「（要確認）」を付ける。「なし」と書いてあれば置き換える）。画面に「残ったまま承認すると、決まっていないことに入れて保存します」と書いてあるため、承認のあとに確認を足さない（人の操作を承認 1 回にするため）
 - `DRY_RUN` が true の場合も、ここでは承認を待つ。承認されたら、Step 9 以降は実行予定の内容を表示するだけにする
-- Step 13 の記録のために、次を控えておく。現在時刻は、シェルで取る（例: `node -e "console.log(new Date().toISOString())"`）
-  - `CONFIRM_SHOWN_AT`: この画面を初めて表示する直前の現在時刻（修正のあとに出し直したときは更新しない）
-  - `EDIT_COUNT`: 修正の指示を受けて、この画面を出し直した回数
-  - `APPROVED_AT`: 承認の返事を受けた直後の現在時刻（ほかの処理より先に取る）。「やめる」が選ばれたときは空にする
-  - `SIMILAR_FLAGGED`: Step 7 で「⚠ 似た課題あり」になった TODO の数（あとで Backlog に入れないことにしたものも数える）
-  - `SIMILAR_STOPPED`: そのうち、承認の時点で Backlog に登録しないことになっていた TODO の数
-- 「やめる」が選ばれたときも、何も保存・登録せずに Step 13 へ進み、記録だけを残す
+- `LOG_RUN` が true の場合だけ、`references/run-log.md` の「Step 8 で控えること」に従って、時刻などを控える
 
 ### Step 9: 議事録を保存する
 
@@ -407,39 +404,10 @@ Google カレンダーの予定作成ツール（例: `mcp__claude_ai_Google_Cal
 📅 カレンダー     : {CALENDAR_COUNT} 件のリマインドを登録（Google Calendar が使えない場合は「未登録：手動登録用の一覧を表示済み」）
 ✅ TODO           : {TODO_COUNT} 件抽出（社内 {社内の件数} 件・社外 {社外の件数} 件・不明 {不明の件数} 件。不明が 0 件なら「・不明」以降は省く）
 🔗 前回の議事録   : {PREV_FILE}（{PREV_DATE}）と比較（前回の議事録がない場合は「なし」）
-⏱ 確認・承認     : {CONFIRM_SHOWN_AT から APPROVED_AT までの分}
 ```
 
-### Step 13: 記録を残す
+### Step 13: 記録を残す（テスト用）
 
-使い方を見直すために、1 回ごとに、確認・承認にかかった時間、TODO の数、「似た課題あり」で止めた数を記録ファイルに 1 行足す。承認したときは Step 12 のあとに、「やめる」が選ばれたときはその場で行う。ここではもう確認を求めない。
+`LOG_RUN` が true の場合だけ行う。false なら何もしない。
 
-- 記録ファイル: `~/Documents/minutes/meeting-tasks-log.csv`（`SAVE_FOLDER` があっても、記録はパソコンに残す）。Cowork では、接続された `minutes` フォルダの中の `meeting-tasks-log.csv`
-- このスキルのフォルダにある `scripts/meeting-log.mjs`（`${CLAUDE_SKILL_DIR}/scripts/meeting-log.mjs`）を、`node` で次のように呼ぶ。JSON は標準入力から渡す（引数で渡すと、シェルによっては引用符が崩れるため）
-
-  ```
-  node {スキルのフォルダ}/scripts/meeting-log.mjs add - --file {記録ファイル}
-  ```
-
-  標準入力に渡す JSON:
-
-  ```json
-  {
-    "meetingDate": "{会議日 YYYY-MM-DD}",
-    "meetingTitle": "{DOC_TITLE（「 - Gemini によるメモ」を除く）}",
-    "result": "{承認 または やめた}",
-    "confirmShownAt": "{CONFIRM_SHOWN_AT}",
-    "approvedAt": "{APPROVED_AT。やめたときは空}",
-    "edits": {EDIT_COUNT},
-    "todos": {TODO_COUNT},
-    "internalTodos": {社内の TODO の数},
-    "backlogRegistered": {BACKLOG_COUNT。やめたときは 0},
-    "similarFlagged": {SIMILAR_FLAGGED},
-    "similarStopped": {SIMILAR_STOPPED},
-    "calendarRegistered": {CALENDAR_COUNT。やめたときは 0}
-  }
-  ```
-
-- `DRY_RUN` が true の場合は記録しない（お試しは、実際の使い方の記録に入れない）。「📝 記録の予定（お試しのため記録しません）」として、確認・承認にかかった時間だけを表示する
-- `node` が使えない・記録ファイルに書けない（Web 版など）場合は、処理を止めずに「記録できませんでした」と伝え、上の JSON を表示する
-- 記録の集計は、ユーザーがターミナルで `node {スキルのフォルダ}/scripts/meeting-log.mjs summary` を実行して行う（README の「使った記録と試算」を参照）
+`references/run-log.md`（`${CLAUDE_SKILL_DIR}/references/run-log.md`）を読み込み、その「Step 12 で足すこと」と「記録を残す」に従う。「やめる」が選ばれたときも、記録だけを残す。
