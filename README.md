@@ -1,6 +1,6 @@
 # meeting-tasks（議事録作成）
 
-Google Meet の「Gemini によるメモ」から議事録を作り、TODO を Backlog に課題登録するスキルです。Claude Code（VS Code・Claude Desktop の Code タブ）、Claude Desktop の Cowork、Gemini CLI で使えます。Codex（ChatGPT）向けの手順もありますが、まだ動作を確かめていません。
+Google Meet の「Gemini によるメモ」から議事録を作り、TODO を Backlog に課題登録するスキルです。Claude Code（VS Code・Claude Desktop の Code タブ）と Claude Desktop の Cowork のどちらでも使えます。
 
 使い方だけ知りたい人は [GUIDE.md](GUIDE.md) を読んでください。
 
@@ -25,7 +25,7 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 | `.claude-plugin/plugin.json` | プラグインの情報（ユーザー設定の項目と Backlog MCP の設定を含む） |
 | `.claude-plugin/marketplace.json` | Claude Code でプラグインとして入れるときに使う（Cowork 用の zip には入れない） |
 | `scripts/build-cowork-zip.sh` | Cowork にアップロードする zip を作る |
-| `skills/meeting-tasks/scripts/backlog-mcp.mjs` | Backlog の接続（Backlog MCP）を、Windows・Mac に合わせて起動する（プラグイン・Gemini CLI・Codex で使う） |
+| `skills/meeting-tasks/scripts/backlog-mcp.mjs` | Backlog の接続（Backlog MCP）を、Windows・Mac に合わせて起動する |
 | `GUIDE.md` | エンジニアでない人向けの使い方ガイド |
 
 ## 設定（Backlog のプロジェクト・保存先・API キー）
@@ -109,116 +109,6 @@ Claude Desktop は公式サイト（https://claude.com/download）から入れ�
 | claude.ai/code | クラウドの一時的な場所（時間がたつと消える） | 使えない |
 
 保存先の Google ドライブのフォルダを決めている場合は、どの場所で使ってもそのフォルダに保存されます。
-
-### Gemini CLI で使う
-
-Gemini CLI（Google の AI をターミナルで使う道具）でも、同じスキルで同じ議事録を作り、Backlog とカレンダーに登録できます。Google ドライブ・ドキュメント・カレンダーには、Google の「Workspace 拡張機能」でつなぎます。
-
-用意するもの：Node.js 20 以上（ターミナルで `node -v` が動くこと）、会社の Google アカウント、Backlog の API キー、Gemini CLI を使える契約（下の注意を参照）
-
-> **注意（2026-11 時点）**：Gemini CLI は、個人向けの Google ログイン（無料・Google AI Pro など）では使えなくなりました（「This client is no longer supported for Gemini Code Assist for individuals」と出る）。会社の Gemini Code Assist（Standard・Enterprise）の契約か、Gemini の API キー（会議の内容を扱うため有料のプラン）が必要です。どれを使うかは会社に確かめてください。後継の Antigravity CLI も同じ形のスキルを読めますが、まだ動作を確かめていません。
-
-> Windows では、**PowerShell** で操作してください（VS Code の下のターミナルでかまいません）。WSL（Ubuntu）のターミナルで操作すると、設定が WSL の中に保存されて、つながらなくなります。
->
-> PowerShell で `gemini` を実行して「このシステムではスクリプトの実行が無効になっているため…」と出る場合は、以下の `gemini` をすべて `gemini.cmd` に置き換えて実行してください（パソコンの設定は変えずに済みます）。
-
-1. Gemini CLI を入れる
-
-   ```
-   npm install -g @google/gemini-cli
-   ```
-
-2. スキルを置く。このリポジトリの `skills/meeting-tasks` フォルダを、`~/.agents/skills/meeting-tasks` に写す（`.agents` から始まるフォルダは、なければ作る）。登録先の Backlog のプロジェクトは、写した先の `references/settings.md` に書く
-
-   ```
-   # Windows（PowerShell）
-   New-Item -ItemType Directory -Force "$HOME\.agents\skills" | Out-Null
-   Copy-Item -Recurse skills\meeting-tasks "$HOME\.agents\skills\"
-
-   # Mac
-   mkdir -p ~/.agents/skills && cp -R skills/meeting-tasks ~/.agents/skills/
-   ```
-
-3. 議事録を保存するフォルダで Gemini CLI を起動し、ログインする
-
-   ```
-   # Windows（PowerShell）
-   New-Item -ItemType Directory -Force "$HOME\Documents\minutes" | Out-Null
-   cd "$HOME\Documents\minutes"
-   gemini
-
-   # Mac
-   mkdir -p ~/Documents/minutes && cd ~/Documents/minutes && gemini
-   ```
-
-   - 「このフォルダを信頼しますか」と聞かれたら **Trust folder** を選ぶ。信頼していないフォルダでは、Backlog などの接続が止められる
-   - **Login with Google** を選び、会社の Google アカウントでログインする
-   - 終わったら `/quit` で閉じる
-
-4. Workspace 拡張機能を入れる（確認には `y` で答える）
-
-   ```
-   gemini extensions install https://github.com/gemini-cli-extensions/workspace
-   ```
-
-5. Backlog をつなぐ。`~/.gemini/settings.json` に、次の `mcpServers` を足す（ほかの項目はそのまま残す）。`args` には、2 で写したフォルダの `scripts/backlog-mcp.mjs` を、区切りを `/` にした絶対パスで書く
-
-   ```json
-   {
-     "mcpServers": {
-       "backlog": {
-         "command": "node",
-         "args": ["C:/Users/{ユーザー名}/.agents/skills/meeting-tasks/scripts/backlog-mcp.mjs"],
-         "env": {
-           "BACKLOG_DOMAIN": "{スペース}.backlog.jp",
-           "BACKLOG_API_KEY": "{API キー}"
-         }
-       }
-     }
-   }
-   ```
-
-   Mac では `args` を `["/Users/{ユーザー名}/.agents/skills/meeting-tasks/scripts/backlog-mcp.mjs"]` にする。API キーはこのファイルにそのまま入るので、ファイルを人に渡さない
-
-6. Google カレンダーの通知を決める。Gemini CLI からは予定ごとの通知を指定できないため、カレンダーの設定の通知が使われる。パソコンのブラウザで Google カレンダーを開き、⚙ →「設定」→ 左の「マイカレンダーの設定」で自分のカレンダー →「終日の予定の通知」を **1 日前 9:00** にする（Claude で入れたときと同じ、期限の前日 9:00 に鳴る）
-
-7. つながったか確かめる。3 のフォルダで次を実行し、`meeting-tasks` が Enabled、`backlog` と `google-workspace` が Connected になっていれば準備完了
-
-   ```
-   gemini skills list
-   gemini mcp list
-   ```
-
-使うときは、3 のフォルダで `gemini` を起動し、「議事録を作って」と頼みます。試すときは「議事録を作って（お試し）」と頼みます。初めて Google のデータを読むときは、ブラウザが開いて Workspace 拡張機能の許可を求められるので、会社のアカウントで許可してください。
-
-Claude で使うときとの違い：
-
-- 承認などの選択はボタンではなく、番号で答える
-- 議事録を Google ドライブのフォルダに保存する設定にしている場合、Markdown の記号（`#` や `|`）のまま保存される（パソコンの `minutes` フォルダに保存する場合は、Claude と同じファイルになる）
-- カレンダーの予定は「予定あり」として入る（Claude では「空き」として入る）
-
-### Codex（ChatGPT）で使う（動作未確認）
-
-Codex は、ChatGPT のプラン（Plus・Business など）のアカウントか、OpenAI の API キーがあれば使えます。まだ動作を確かめていません。
-
-1. Codex を入れる：`npm install -g @openai/codex` のあと `codex` を起動し、ログインする
-2. スキルを置く：Gemini CLI の 2 と同じく、`~/.agents/skills/meeting-tasks` に写す（Gemini CLI と同じ場所なので、両方使う場合は 1 回でよい）
-3. Backlog をつなぐ：`~/.codex/config.toml` に次を足す
-
-   ```toml
-   [mcp_servers.backlog]
-   command = "node"
-   args = ["C:/Users/{ユーザー名}/.agents/skills/meeting-tasks/scripts/backlog-mcp.mjs"]
-   env = { BACKLOG_DOMAIN = "{スペース}.backlog.jp", BACKLOG_API_KEY = "{API キー}" }
-   ```
-
-4. 使うときは `codex` を起動し、`$meeting-tasks` と入力するか、「議事録を作って」と頼む
-
-Codex には Google ドライブ・カレンダーにつなぐ公式の方法がないため、次のように動きます。
-
-- 会議メモは、本文（「メモ」と「文字起こし」）をコピーして貼る
-- 議事録はパソコンの `~/Documents/minutes/` に保存する
-- カレンダーには、手で登録する一覧が出る
 
 ## 使い方
 
