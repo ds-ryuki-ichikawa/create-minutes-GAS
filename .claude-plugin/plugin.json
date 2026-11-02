@@ -1,13 +1,13 @@
 {
   "name": "meeting-tasks",
   "displayName": "議事録作成",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Google Meet の「Gemini によるメモ」から議事録を作り、社内の TODO を Backlog の課題と Google カレンダーのリマインドに登録します。",
   "author": { "name": "市川瑠生" },
   "mcpServers": {
     "backlog": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/backlog-mcp.mjs"],
+      "args": ["${CLAUDE_PLUGIN_ROOT}/skills/meeting-tasks/scripts/backlog-mcp.mjs"],
       "env": {
         "BACKLOG_DOMAIN": "${user_config.backlog_domain}",
         "BACKLOG_API_KEY": "${user_config.backlog_api_key}"

@@ -1,4 +1,4 @@
-// Backlog MCP（backlog-mcp-server）を起動する。plugin.json の mcpServers から node で呼ぶ。
+// Backlog MCP（backlog-mcp-server）を起動する。plugin.json の mcpServers や、Gemini CLI・Codex の設定から node で呼ぶ。
 // Windows では npx が npx.cmd なので、シェル経由で起動する（Mac・Linux はそのまま起動する）。
 // node と同じフォルダにある npx が見つかるように、そのフォルダを PATH の先頭に足す。
 import { spawn } from "node:child_process";

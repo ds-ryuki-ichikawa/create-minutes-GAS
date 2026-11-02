@@ -5,7 +5,7 @@ description: Google Meet の「Gemini によるメモ」（Google ドキュメ�
 
 # 議事録作成
 
-Claude Code では `/meeting-tasks` と入力すると実行する。Claude Desktop の Cowork では、`/` で出るメニューから `meeting-tasks` を選ぶか、議事録の作成を頼むと実行する。会議メモの URL がなくても、最近の会議メモを探して候補を出す。  
+Claude Code では `/meeting-tasks` と入力すると実行する。Claude Desktop の Cowork では、`/` で出るメニューから `meeting-tasks` を選ぶか、議事録の作成を頼むと実行する。Gemini CLI・Codex では、「議事録を作って」（試すときは「議事録を作って（お試し）」）と頼むと実行する。会議メモの URL がなくても、最近の会議メモを探して候補を出す。  
 Google Docs の会議メモを読み込み、指定フォーマットで議事録・TODO を生成し、人が 1 回確認・承認したら、ローカル保存・Backlog 課題登録・Google カレンダーへのリマインド登録をまとめて行う。
 
 引数: `$ARGUMENTS`
@@ -26,9 +26,23 @@ Google Docs の会議メモを読み込み、指定フォーマットで議事�
 
 ## 環境による違い
 
-Claude Code（VS Code・ターミナル）と Claude Desktop の Cowork のどちらでも動くように書いている。違いは次の 4 点。
+Claude Code（VS Code・ターミナル）、Claude Desktop の Cowork、Gemini CLI、Codex のどれでも、同じ議事録と同じ登録内容になるように書いている。違いは次のとおり。
 
-- **ツール名**: 手順に書いたツール名（`mcp__claude_ai_Google_Drive__read_file_content` など）は Claude Code での例。Cowork などでは名前が違うことがあるので、使えるツールの中から同じ機能のもの（Google ドライブのファイル検索・読み込み、Backlog の課題検索・登録、Google カレンダーの予定一覧・作成など）を選んで使う。引数名は各ツールの定義に合わせる
+- **ツール名**: 手順に書いたツール名（`mcp__claude_ai_Google_Drive__read_file_content` など）は Claude Code での例。ほかの環境では名前が違うので、使えるツールの中から同じ機能のもの（Google ドライブのファイル検索・読み込み、Backlog の課題検索・登録、Google カレンダーの予定一覧・作成など）を選んで使う。引数名は各ツールの定義に合わせる。Gemini CLI（Google Workspace 拡張機能）での対応は次の表のとおり
+
+| 使う場面 | Claude Code の例 | Gemini CLI（Workspace 拡張機能） |
+|---|---|---|
+| 会議メモ・議事録を探す | `mcp__claude_ai_Google_Drive__search_files` | `drive.search`（`query` に検索条件。下の「検索条件の書き方」を参照） |
+| 会議メモ・議事録を読む | `mcp__claude_ai_Google_Drive__read_file_content` | `docs.getText`（`documentId` に ID か URL） |
+| 議事録をドライブに保存する | `mcp__claude_ai_Google_Drive__create_file` | `docs.create` のあと `drive.moveFile`（Step 9 を参照） |
+| 自分のメールアドレスを確かめる | `mcp__claude_ai_Google_Calendar__list_calendars` | `people.getMe` または `calendar.list` |
+| カレンダーの予定を見る | `mcp__claude_ai_Google_Calendar__list_events` | `calendar.listEvents`（`calendarId` は `primary`） |
+| カレンダーに予定を作る | `mcp__claude_ai_Google_Calendar__create_event` | `calendar.createEvent`（`calendarId` は `primary`。Step 11 を参照） |
+| Backlog | `mcp__backlog__get_issues` など | Backlog の MCP の同じ名前のツール（`get_issues` など） |
+
+- **検索条件の書き方**: Claude の Google ドライブのツールでは、ファイル名を `title contains '…'`、フォルダを `parentId = '…'` と書く。Gemini CLI の `drive.search` では Google Drive API の書き方に合わせ、ファイル名を `name contains '…'`、フォルダを `'{フォルダ ID}' in parents` と書く（`mimeType`・`createdTime`・`fullText` はどちらも同じ）。`drive.search` の結果には作成日時が入らないので、会議の日時はタイトルの日時を使い、なければ `modifiedTime`（JST）を使う
+- **Google のツールがない環境（Codex など）**: 会議メモを読めないときは、会議メモ（「メモ」と「文字起こし」）の本文を貼ってもらって進める（Step 3 を参照）。カレンダーは「Google Calendar が使えない場合」のとおり、手で登録する一覧を出す
+- **このスキルのフォルダ**: 手順の `${CLAUDE_SKILL_DIR}` は Claude での書き方。Gemini CLI・Codex では、このファイル（SKILL.md）があるフォルダ（ふつうは `~/.agents/skills/meeting-tasks`）を指す
 - **保存先フォルダ**: `SAVE_FOLDER`（「設定の決め方」を参照）が決まっていれば、議事録は Google ドライブのそのフォルダに保存する。どの環境でも同じ場所に残るので、以下の扱いは不要。決まっていない場合は、議事録は `~/Documents/minutes/` に保存する（以下 `MINUTES_DIR`）。Cowork では、接続されたフォルダのうち `minutes` フォルダ（またはドキュメントフォルダの中の `minutes`）を `MINUTES_DIR` とする。読み書きできるフォルダがない場合は、ユーザーに「ドキュメントの minutes フォルダを接続してください」と伝えてから進める。接続されなければ、議事録を Cowork の成果物ファイルとして出力し、その場所を保存先として報告する。claude.ai のチャットや Web 版 Claude Code（claude.ai/code）のようにクラウドで動く環境では、`~/Documents/minutes/` に書いてもユーザーのパソコンには保存されない。この場合は「パソコンには保存されません」とはっきり伝え、議事録をダウンロードできるファイルとして出す（出せなければ本文をコピーできる形で表示する）。お試し実行の保存予定の表示でも同じように伝える
 - **Backlog**: Backlog のツールが使えない場合も処理を止めず、Step 7 の「Backlog が使えない場合」に従う。Backlog の接続は複数あることがある（例: プラグインに入っている `plugin:meeting-tasks:backlog` と、Claude Desktop の設定ファイルや拡張機能で入れた `backlog`）。どれかが「接続に失敗した」と通知されても、ほかの Backlog のツールがあればそれを使う。使えるかどうかは通知だけで決めず、Backlog のツール（例: スペース情報の取得）を実際に呼んで確かめる
 - **答え方（ボタン）**: 「ユーザーへの聞き方」のとおり、選択肢を出すツールがある環境ではボタンで、ない環境では番号で答えてもらう
@@ -68,7 +82,7 @@ Claude Code（VS Code・ターミナル）と Claude Desktop の Cowork のど�
 - 組織の初期値は、このスキルのフォルダにある `references/settings.md`（`${CLAUDE_SKILL_DIR}/references/settings.md`）に書く。値が空なら設定されていないとみなす
 - `SAVE_FOLDER` が URL の場合は、`/folders/{ID}` の `{ID}` 部分を取り出す
 - どこにもない場合、`BACKLOG_PROJECT` は空のままにして Step 7 でユーザーに聞く。`SAVE_FOLDER` は空のままにし、パソコンのフォルダに保存する
-- Backlog の API キーは、引数や `references/settings.md` には書かない。Claude Code ではプラグインのユーザー設定に入れ（安全な保管場所に保存される）、Cowork では Claude Desktop の設定で Backlog の接続に入れる
+- Backlog の API キーは、引数や `references/settings.md` には書かない。Claude Code ではプラグインのユーザー設定に入れ（安全な保管場所に保存される）、Cowork では Claude Desktop の設定で Backlog の接続に入れる。Gemini CLI では `~/.gemini/settings.json`、Codex では `~/.codex/config.toml` の Backlog の接続に入れる
 
 ---
 
@@ -78,7 +92,7 @@ Claude Code（VS Code・ターミナル）と Claude Desktop の Cowork のど�
 
 ### Step 1: 引数をパースする
 
-引数（`$ARGUMENTS`）から以下を抽出し、各変数に格納する。引数が空の場合は、ユーザーのメッセージから読み取る（会議メモの URL が書かれていれば `--doc-id`、「お試し」とあれば `--dry-run` とみなす。会議名・日付・参加者の名前が書かれていれば、Step 2 で会議メモを探す手がかりにする）:
+引数（`$ARGUMENTS`）から以下を抽出し、各変数に格納する。引数が空の場合（ドル記号の付いた `ARGUMENTS` の文字のまま残っている場合も含む）は、ユーザーのメッセージから読み取る（会議メモの URL が書かれていれば `--doc-id`、「お試し」とあれば `--dry-run` とみなす。会議名・日付・参加者の名前が書かれていれば、Step 2 で会議メモを探す手がかりにする）:
 
 - `DOC_ID` ← `--doc-id` の値（URL の場合は `/document/d/{ID}/` の `{ID}` 部分を抽出する）。なければ空にし、Step 2 で決める
 - `BACKLOG_PROJECT` ← 「設定の決め方」に従う（`--backlog-project` → ユーザー設定 → 組織の初期値。どこにもなければ空）
@@ -131,7 +145,7 @@ Google ドライブのファイル検索ツール（例: `mcp__claude_ai_Google_
 - URL が送られたらその ID を、会議名・日付が送られたらそれを手がかりに 1 から探し直す
 - 候補が 1 件だけでも、勝手に始めずに「この会議メモで作りますか？」と確認する
 - 見つからない場合は「最近の会議メモが見つかりませんでした。会議メモの URL か、会議名・日付を送ってください」と伝える
-- Google ドライブのツールが使えない場合は、会議メモの URL を送ってもらう
+- Google ドライブのツールが使えない場合は、探さずに Step 3 へ進む（会議メモの本文を貼ってもらう）
 
 ### Step 3: 元ドキュメントを読み込む
 
@@ -139,8 +153,9 @@ Google ドライブのファイル読み込みツール（例: `mcp__claude_ai_G
 ドキュメントのタイトルと本文全体を取得し、タイトルを `DOC_TITLE` に格納する。
 
 - 本文には「メモ」タブ（概要・決定事項・次のステップ・詳細）と「文字起こし」タブの両方が含まれる
+- Gemini CLI では `docs.getText` を使う。タブが複数あると、タブごとの本文がまとめて返る
 - ファイルが見つからない・権限がない場合は処理を中断し、ドキュメントの共有設定を確認するようユーザーに伝える
-- Google ドライブのツールが使えない場合は処理を中断し、Google ドライブのコネクタを接続するようユーザーに伝える
+- Google ドライブのツールが使えない場合（Codex など）は、「会議メモを開き、『メモ』と『文字起こし』の本文をすべてコピーして貼ってください。会議のタイトルも添えてください」と頼み、貼られた本文とタイトルで進める。この場合 `DOC_ID` は空のままなので、Backlog の詳細とカレンダーの説明の「元メモ」の行は省く。貼ってもらえないときは処理を中断し、Google ドライブを接続するようユーザーに伝える
 
 ### Step 4: 変換プロンプトを読み込む
 
@@ -257,7 +272,7 @@ Google Calendar のツールが使えない（コネクタ未接続・未認可�
 
 - 予定の種類: 期限日の終日予定（終了日は期限日の翌日を指定する）
 - タイトル: `【期限】{対応内容}`
-- 通知: ポップアップ通知を開始の 900 分前に設定する（期限の前日 9:00 JST に鳴る）
+- 通知: ポップアップ通知を開始の 900 分前に設定する（期限の前日 9:00 JST に鳴る）。Gemini CLI の `calendar.createEvent` には通知を指定する項目がないため、Google カレンダーの「終日の予定の通知」の設定で鳴る（導入のときに「1 日前 9:00」にしておく。導入手順書を参照）
 - 説明: 以下の形式（Backlog の URL は Step 10 で登録したあとに入れる）
 
 ```
@@ -273,7 +288,7 @@ Backlog: {Step 10 で登録した課題の URL。登録していなければ省�
   - 担当者が実行者本人の場合は招待しない。本人かどうかは、予定を作るカレンダーの持ち主（自分）のメールアドレスと比べて判断する。会議の招待者情報などから担当者のアドレスがわかっても、それが自分のアドレスなら招待しない
   - 自分のメールアドレスは、招待する人を決める前に、Google カレンダーのカレンダー一覧ツール（例: `mcp__claude_ai_Google_Calendar__list_calendars`）で確かめる。自分のメインのカレンダーの ID（メールアドレスの形のもの。祝日などのカレンダーは除く）が自分のメールアドレス。お試し実行でも同じように確かめ、自分のアドレスは招待の欄に出さない
   - メールアドレスがわからない担当者（自分以外）は招待せず、⚠ を付けて確認対象にする
-- 重複防止: Google カレンダーの予定一覧ツール（例: `mcp__claude_ai_Google_Calendar__list_events`）で期限日（`startTime`: 期限日 `T00:00:00`、`endTime`: 翌日 `T00:00:00`、`fullText`: `【期限】`）の予定を取得し、同じタイトルの予定がすでにある場合は作らず、「登録済み」として扱う
+- 重複防止: Google カレンダーの予定一覧ツール（例: `mcp__claude_ai_Google_Calendar__list_events`）で期限日（`startTime`: 期限日 `T00:00:00`、`endTime`: 翌日 `T00:00:00`、`fullText`: `【期限】`）の予定を取得し、同じタイトルの予定がすでにある場合は作らず、「登録済み」として扱う。Gemini CLI の `calendar.listEvents` では、`calendarId` に `primary`、`timeMin` に期限日 `T00:00:00+09:00`、`timeMax` に翌日 `T00:00:00+09:00` を指定し、返ってきた予定のタイトルで比べる
 
 #### 7-3. 保存するファイル名
 
@@ -326,6 +341,7 @@ Step 8 で承認を受けた確定版を保存する。`SAVE_FOLDER` があれ�
 
 - 同じフォルダに同じ名前のファイルがあるか、Google ドライブのファイル検索ツールで確かめる。検索結果が複数ページに分かれて返るときは、最後のページまで取得する（Google ドライブは同じ名前のファイルを作れてしまうため、見落とすと重複する）。あれば上書きせず、末尾に `_2`、`_3` …を付けて空いている名前にする（Google ドライブでは拡張子 `.md` は付けない）
 - Google ドライブのファイル作成ツール（例: `mcp__claude_ai_Google_Drive__create_file`）で、`parentId` に `SAVE_FOLDER`、`title` にファイル名、`textContent` に `MINUTES_MD`、`contentMimeType` に `text/markdown` を指定して作る（Google ドキュメントに変換される）
+- Gemini CLI では、`docs.create` の `title` にファイル名、`content` に `MINUTES_MD` を指定して作り、返ってきた `documentId` を `drive.moveFile` の `fileId` に、`SAVE_FOLDER` を `folderId` に渡して移す。`docs.create` は Markdown を見出しや表に変換せず、そのままの文字で入れるため、完了報告で「Markdown の記号のまま保存しました」と伝える
 - 作ったファイルの URL（`https://docs.google.com/document/d/{ID}/edit`）を `LOCAL_FILE_PATH` に格納する
 - フォルダが見つからない・書き込めない場合は、処理を止めてユーザーに伝え、パソコンのフォルダに保存するか聞く
 
@@ -375,6 +391,14 @@ Google カレンダーの予定作成ツール（例: `mcp__claude_ai_Google_Cal
 - `availability`: `AVAILABILITY_FREE`（リマインドなので、予定の空き状況をふさがない）
 - `description`: 説明
 - `attendees`: 招待する人の `email`（いなければ省く）
+
+Gemini CLI の `calendar.createEvent` では、次のように指定する（通知と空き状況は指定できないので、カレンダーの設定に任せる）:
+- `calendarId`: `primary`
+- `summary`: タイトル
+- `start`: `{"date": "{期限日}"}`、`end`: `{"date": "{期限日の翌日}"}`（終日予定。終了日は翌日を指定する）
+- `description`: 説明
+- `attendees`: 招待する人のメールアドレスの一覧（いなければ省く）
+- `sendUpdates`: 招待する人がいれば `all`、いなければ省く
 
 途中で失敗した場合は、そこで止めて登録済みの予定と失敗した TODO をユーザーに伝える。
 
