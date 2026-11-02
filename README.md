@@ -2,7 +2,7 @@
 
 Google Meet の「Gemini によるメモ」から議事録を作り、TODO を Backlog に課題登録するスキルです。Claude Code（VS Code・Claude Desktop の Code タブ）と Claude Desktop の Cowork のどちらでも使えます。
 
-使い方だけ知りたい人は [GUIDE.md](GUIDE.md)、Claude Desktop に入れる手順は [INSTALL.md](INSTALL.md) を読んでください。
+使い方だけ知りたい人は [GUIDE.md](GUIDE.md)、動作環境と、入れてから動かすまでの手順は [INSTALL.md](INSTALL.md) を読んでください。
 
 ## できること
 
@@ -27,7 +27,7 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 | `scripts/build-cowork-zip.sh` | Cowork にアップロードする zip を作る |
 | `skills/meeting-tasks/scripts/backlog-mcp.mjs` | Backlog の接続（Backlog MCP）を、Windows・Mac に合わせて起動する |
 | `GUIDE.md` | エンジニアでない人向けの使い方ガイド |
-| `INSTALL.md` | Claude Desktop（Cowork）に入れる導入手順書 |
+| `INSTALL.md` | 導入・操作手順書（動作環境、Claude Code・Cowork への入れ方、操作手順） |
 
 ## 設定（Backlog のプロジェクト・保存先・API キー）
 
