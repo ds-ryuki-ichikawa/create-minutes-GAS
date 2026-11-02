@@ -26,6 +26,7 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 | `.claude-plugin/marketplace.json` | Claude Code でプラグインとして入れるときに使う（Cowork 用の zip には入れない） |
 | `scripts/build-cowork-zip.sh` | Cowork にアップロードする zip を作る |
 | `skills/meeting-tasks/scripts/backlog-mcp.mjs` | Backlog の接続（Backlog MCP）を、Windows・Mac に合わせて起動する |
+| `skills/meeting-tasks/scripts/meeting-log.mjs` | 使った記録（確認・承認の時間、TODO の数、似た課題で止めた数）を残し、集計する |
 | `GUIDE.md` | エンジニアでない人向けの使い方ガイド |
 | `INSTALL.md` | 導入・操作手順書（動作環境、Claude Code・Cowork への入れ方、操作手順） |
 | `MAC-CHECK.md` | Mac で動かすときに確かめる項目（チェックリスト） |
@@ -145,6 +146,29 @@ Cowork や Web 版では、「議事録を作って」と頼むだけで同じ�
 | `--dry-run` | — | お試し実行 |
 
 詳しくは `skills/meeting-tasks/SKILL.md` を参照してください。
+
+## 使った記録と試算
+
+本番で使うたびに、次を記録ファイル（`~/Documents/minutes/meeting-tasks-log.csv`。Cowork ではつないだ `minutes` フォルダの中）に 1 行ずつ残します。お試し実行は記録しません。
+
+| 記録すること | 測り方 |
+|---|---|
+| 確認・承認にかかった時間 | 確認の画面を初めて出したときから、承認するまで（修正の指示と、画面を出し直す待ち時間を含む） |
+| TODO の数 | 抜き出した TODO の数と、そのうち社内の数・Backlog に登録した数・カレンダーに入れた数 |
+| 「似た課題あり」で止めた数 | 「⚠ 似た課題あり」になった TODO の数と、そのうち Backlog に登録しなかった数 |
+| 修正の回数 | 確認の画面を出し直した回数 |
+
+途中で「やめる」を選んだ回も、「やめた」として残します（集計には入れません）。CSV なので、Excel でも開けます。
+
+ある程度たまったら、このリポジトリのフォルダで次を実行すると、集計と、Backlog の「試算」にそのまま貼れる文が出ます。
+
+```
+node skills/meeting-tasks/scripts/meeting-log.mjs summary
+```
+
+- いまのやり方の時間は測れないので、仮の値（清書 30 分、Backlog への登録 1 件 3 分）で出します。値を変えるときは `--manual-minutes 20 --per-todo 2` のように付けます
+- 記録ファイルの場所が違うときは `--file {記録ファイルのパス}` を付けます
+- 記録ファイルには会議名が入ります。集計の結果には会議名は出ません
 
 ## 注意
 
