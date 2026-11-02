@@ -16,7 +16,7 @@ Claude 専用です。Gemini・ChatGPT では、今の会社の契約では動�
 | 必要なもの | 内容 |
 | --- | --- |
 | Claude の有料プラン | Pro・Max・Team・Enterprise のいずれか |
-| パソコン | Windows 10 以上。Mac は手順上は動くはずだが未確認 |
+| パソコン | Windows 10 以上、または Mac（Mac は手順を用意したが、まだ動かしていない。[Mac での確認](MAC-CHECK.md)を参照） |
 | 使う場所（どちらか） | A. Claude Code（VS Code の拡張機能、または Claude Desktop の Code タブ）／B. Claude Desktop の Cowork |
 | Node.js | LTS 版（20 以上）。Backlog につなぐときだけ必要 |
 | Google アカウント | 会議メモのある Google ドライブと、Google カレンダーを使うもの |
@@ -64,6 +64,8 @@ Google ドライブ ──（Claude の Google Drive コネクタ）──▶ �
 | backlog-mcp-server | 0.23.3 |
 | プラグイン（meeting-tasks） | 3.2.0 |
 
+Mac では、まだ動かしていません。次回 Mac で確かめる予定で、確かめる項目を [MAC-CHECK.md](MAC-CHECK.md) にまとめています。
+
 ## 2. 導入する
 
 A か B のどちらかを行います。試すだけなら A が早いです。
@@ -72,6 +74,7 @@ A か B のどちらかを行います。試すだけなら A が早いです。
 
 1. VS Code に「Claude Code」の拡張機能を入れ、Claude のアカウントでログインする
 2. Node.js の LTS 版を <https://nodejs.org> から入れる。ターミナルで `node -v` が動けばよい
+   - Mac では、公式サイトのインストーラー（`.pkg`）で入れるのがおすすめ。Homebrew や nvm で入れた Node.js は、アプリから見つからないことがある（見つからないときは「4. 困ったとき」を参照）
 3. Google ドライブと Google カレンダーをつなぐ。ブラウザで <https://claude.ai> を開き、「設定」→「コネクタ」で「Google Drive」と「Google Calendar」を接続する（Claude Code は、アカウントでつないだコネクタを使う）
 4. リポジトリを手元に置き、ターミナルで次を実行する。`{C03-meeting-tasks のフォルダ}` には、clone した中の `C03-meeting-tasks` フォルダのパスを入れる
 
@@ -100,18 +103,20 @@ A か B のどちらかを行います。試すだけなら A が早いです。
 
 Claude Desktop は、必ず公式サイトから入れてください。ほかの方法（winget など）で入れたものでは、Cowork が使えません。
 
-1. ブラウザで <https://claude.com/download> を開き、Windows 用をダウンロードする
-2. ダウンロードしたファイルを開いて、インストールする。「このアプリがデバイスに変更を加えることを許可しますか」と出たら「はい」を押す
+1. ブラウザで <https://claude.com/download> を開き、自分のパソコン用（Windows か Mac）をダウンロードする
+2. インストールする
+   - Windows：ダウンロードしたファイルを開く。「このアプリがデバイスに変更を加えることを許可しますか」と出たら「はい」を押す
+   - Mac：ダウンロードした `.dmg` を開き、Claude のアイコンを「アプリケーション」フォルダにドラッグする。「アプリケーション」から Claude を開く
 3. Claude Desktop が開いたら、Claude のアカウントでログインする
 4. 画面の左側に「Cowork」が出ていれば完了
 
-初めて Cowork を開くと、パソコンの準備（Windows の仮想化の機能）の確認が行われます。設定を求められたら、画面の案内に従ってください。
+初めて Cowork を開くと、パソコンの準備（Windows では仮想化の機能）の確認が行われます。設定を求められたら、画面の案内に従ってください。
 
 **B-2. プラグインを入れる**
 
 zip ファイルを、解凍せずにそのままアップロードします。
 
-1. `meeting-tasks-plugin.zip` を用意する。提供元から受け取るか、リポジトリの `C03-meeting-tasks` フォルダで、Git Bash から `scripts/build-cowork-zip.sh` を実行して作る
+1. `meeting-tasks-plugin.zip` を用意する。提供元から受け取るか、リポジトリの `C03-meeting-tasks` フォルダで `scripts/build-cowork-zip.sh` を実行して作る（Windows は Git Bash、Mac はターミナルで実行する）。zip の中身は Windows と Mac で同じなので、どちらで作ったものでも使える
 2. Claude Desktop の左側で「Customize」→「Plugins」を開く
 3. 「Add」→「Upload plugin」を選び、zip ファイルを選ぶ
 4. プラグインの一覧に「議事録作成」が出ていれば完了
@@ -130,6 +135,10 @@ Google カレンダーをつながなくても議事録は作れます。その�
 **B-4. Backlog をつなぐ**
 
 Backlog に登録しない場合は、この手順を飛ばしてかまいません（登録する課題の一覧が出るので、手で登録します）。
+
+Windows と Mac で手順が違います。
+
+**Windows の場合**
 
 1. Node.js の LTS 版を <https://nodejs.org> から入れる（設定は変えずに「次へ」で進める）
 2. Claude Desktop を完全に終了する。画面右下のタスクトレイの Claude のアイコンを右クリックし、「終了」を選ぶ（開いたままだと、書き足した内容が上書きされることがある）
@@ -153,14 +162,41 @@ Backlog に登録しない場合は、この手順を飛ばしてかまいませ
 
 6. 上書き保存して、Claude Desktop を開く。「設定」→「開発者」で backlog が「running」になっていれば完了
 
+**Mac の場合**（まだ動かしていない手順です）
+
+1. Node.js の LTS 版を、<https://nodejs.org> の公式インストーラー（`.pkg`）で入れる
+2. ターミナルを開き、`which npx` を実行する。出てきたパス（例：`/usr/local/bin/npx`）を控える
+3. Claude Desktop を完全に終了する。画面上のメニューバーの「Claude」→「Claude を終了」を選ぶ（⌘Q でもよい）
+4. Finder で、メニューバーの「移動」→「フォルダへ移動」を選び、`~/Library/Application Support/Claude` と入力して開く
+5. `claude_desktop_config.json` をテキストエディットで開く。念のため、先にファイルを複製して控えを取っておく。ファイルがなければ、テキストエディットで `{` と `}` の 2 行だけのファイルを作り、この名前で保存する（「フォーマット」→「標準テキストにする」にしてから保存する）
+6. 1 行目の `{` のすぐ下に、次の内容を貼り付ける。`{npx のパス}` には 2 で控えたパスを入れ、`{スペースID}` と `{APIキー}` は自分のものに書き換え、`{ }` も消す
+
+   ```json
+     "mcpServers": {
+       "backlog": {
+         "command": "{npx のパス}",
+         "args": ["-y", "backlog-mcp-server"],
+         "env": {
+           "PATH": "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin",
+           "BACKLOG_DOMAIN": "{スペースID}.backlog.jp",
+           "BACKLOG_API_KEY": "{APIキー}"
+         }
+       }
+     },
+   ```
+
+7. 保存して、Claude Desktop を開く。「設定」→「開発者」で backlog が「running」になっていれば完了
+
+`PATH` の行は、`npx` が Node.js を見つけるためのものです。Node.js を別の場所に入れている場合は、`which node` で出たフォルダを先頭に足してください。
+
 スペース ID は、Backlog の URL の `https://` のすぐ後ろの部分です。すでに `"mcpServers"` がある場合は、その中に `"backlog": {…}` の部分だけを足してください。API キーはあなたの Backlog の権限で動くので、他の人に教えないでください。
 
 **B-5. 議事録の保存フォルダをつなぐ**
 
 Cowork は、つないだフォルダにしかファイルを保存できません。
 
-1. エクスプローラーで「ドキュメント」を開き、`minutes` という名前のフォルダを作る
-2. Cowork で初めて議事録を作るときに、フォルダの接続を求められるので、`ドキュメント\minutes` を選ぶ
+1. 「ドキュメント」（Mac の Finder では「書類」）を開き、`minutes` という名前のフォルダを作る
+2. Cowork で初めて議事録を作るときに、フォルダの接続を求められるので、1 で作った `minutes` フォルダを選ぶ
 
 つながないと、議事録がフォルダに保存されず、前回の議事録とも比べられません。
 
@@ -265,6 +301,7 @@ Cowork は、つないだフォルダにしかファイルを保存できませ�
 | 「ドキュメントが読み込めない」と出る | つないだ Google アカウントで、そのメモを開けるか確かめる |
 | 「Backlog が接続されていないため…」と出る | A は `/mcp` で `plugin:meeting-tasks:backlog` を、B は「設定」→「開発者」で backlog を確かめる |
 | Backlog が「Connection closed」でつながらない | A は `/plugin configure` で `backlog_domain` と `backlog_api_key` が入っているか、B は設定ファイルの書き間違い（カンマや `"` の抜け）を確かめる。どちらも `node -v` が動くか確かめる |
+| Mac で、Backlog の接続に「node が見つからない」（`spawn node ENOENT` など）と出る | アプリから Node.js が見えていない。公式インストーラー（`.pkg`）で Node.js を入れ直すか、A ならターミナルで `code .` と打って VS Code を開き直す |
 | 「最新のインストーラーで Claude Desktop をインストールする必要があります」と出る | Claude Desktop をアンインストールし、公式サイトから入れ直す |
 | 担当者が「⚠ 未設定」のまま | Backlog のプロジェクトのメンバーにその名前がない。Backlog に登録されている名前で伝える |
 | 議事録がフォルダに保存されない（Cowork） | B-5 の `minutes` フォルダをつなぐ |

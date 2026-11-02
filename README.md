@@ -28,6 +28,7 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 | `skills/meeting-tasks/scripts/backlog-mcp.mjs` | Backlog の接続（Backlog MCP）を、Windows・Mac に合わせて起動する |
 | `GUIDE.md` | エンジニアでない人向けの使い方ガイド |
 | `INSTALL.md` | 導入・操作手順書（動作環境、Claude Code・Cowork への入れ方、操作手順） |
+| `MAC-CHECK.md` | Mac で動かすときに確かめる項目（チェックリスト） |
 
 ## 設定（Backlog のプロジェクト・保存先・API キー）
 
@@ -68,7 +69,7 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 
 4. Claude Code を開き直すと `/meeting-tasks:meeting-tasks` が使えるようになる
 
-Backlog の接続（Backlog MCP）はプラグインに入っていて、上の `backlog_domain` と `backlog_api_key` で動きます。Node.js が入っていれば（ターミナルで `node -v` が動けば）、`skills/meeting-tasks/scripts/backlog-mcp.mjs` が Windows・Mac に合わせて起動します。Mac では動作を確かめていません。すでに自分で Backlog MCP を設定してある場合は、同じ内容のものは二重に起動されず、自分の設定がそのまま使われます。
+Backlog の接続（Backlog MCP）はプラグインに入っていて、上の `backlog_domain` と `backlog_api_key` で動きます。Node.js が入っていれば（ターミナルで `node -v` が動けば）、`skills/meeting-tasks/scripts/backlog-mcp.mjs` が Windows・Mac に合わせて起動します。Mac ではまだ動かしていません（確かめる項目は [MAC-CHECK.md](MAC-CHECK.md)）。すでに自分で Backlog MCP を設定してある場合は、同じ内容のものは二重に起動されず、自分の設定がそのまま使われます。
 
 スキルのフォルダだけをコピーして使うこともできます（`skills/meeting-tasks` をフォルダごと `~/.claude/skills/meeting-tasks` にコピーすると `/meeting-tasks` で動く）。この場合はユーザー設定が使えないので、引数か `settings.md` で決めます。Backlog MCP も自分で設定します（下の「Backlog MCP が『Connection closed』でつながらない」を参照）。以前の版で `~/.claude/commands/create-minutes.md` と `~/.claude/templates/minutes-template.md` を置いていた場合は、その 2 つを消してください。以前の名前（`create-minutes`・`task-get`）で `~/.claude/skills/` に入れていた場合も、そのフォルダを消してください。
 

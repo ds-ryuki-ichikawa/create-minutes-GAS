@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Cowork（Claude Desktop）にアップロードするプラグインの zip を作る（Git Bash で実行する）。
+# Cowork（Claude Desktop）にアップロードするプラグインの zip を作る（Windows は Git Bash、Mac はターミナルで実行する）。
 # Cowork ではユーザー設定を入力できず、プラグインの Backlog の接続が必ず失敗するので、
 # plugin.json から mcpServers と userConfig を外す。中身はコミット済みのもの（HEAD）を使う。
 #
