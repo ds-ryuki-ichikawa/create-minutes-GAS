@@ -31,6 +31,7 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 | `GUIDE.md` | エンジニアでない人向けの使い方ガイド |
 | `INSTALL.md` | 導入・操作手順書（動作環境、Claude Code・Cowork への入れ方、操作手順） |
 | `MAC-CHECK.md` | Mac で動かすときに確かめる項目（チェックリスト） |
+| `TEST-PLAN.md` | システムテストの項目と結果の表 |
 
 ## 設定（Backlog のプロジェクト・保存先・API キー）
 
