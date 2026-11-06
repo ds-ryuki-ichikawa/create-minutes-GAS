@@ -1,6 +1,9 @@
 # Cowork 用にまとめた zip（scripts/build-cowork-zip.sh で作る。中身は .claude-plugin/plugin.json と skills/）
 *.zip
 
+# Apps Script 版を clasp で送るときの設定（スクリプト ID は人ごとに違う）
+gas/.clasp.json
+
 # OS が作るファイル
 Thumbs.db
 desktop.ini

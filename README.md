@@ -4,6 +4,8 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 
 使い方だけ知りたい人は [GUIDE.md](GUIDE.md)、動作環境と、入れてから動かすまでの手順は [INSTALL.md](INSTALL.md) を読んでください。
 
+> **Apps Script 版（開発中）**：パソコンに何も入れず、Google の中だけで同じことを行う版を [gas/](gas/README.md) で作っています。Claude の代わりに Gemini が議事録を書き、スプレッドシートのメニューから使います。扱うデータと権限は [gas/SECURITY.md](gas/SECURITY.md) にまとめています。
+
 ## できること
 
 1. Google Drive から Gemini のメモ（メモ＋文字起こし）を読み込む。URL を渡さなければ、最近の会議メモを探して候補を出す

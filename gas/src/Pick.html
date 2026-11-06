@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+  body { font: 14px/1.7 "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic", sans-serif; color: #1b2230; margin: 0; padding: 4px 8px; }
+  h3 { font-size: 14px; margin: 12px 0 6px; }
+  .list { display: grid; gap: 4px; max-height: 260px; overflow-y: auto; border: 1px solid #d9dee7; border-radius: 6px; padding: 6px; }
+  label.item { display: flex; gap: 8px; align-items: baseline; padding: 4px 6px; border-radius: 4px; cursor: pointer; }
+  label.item:hover { background: #eef3f8; }
+  .when { font-variant-numeric: tabular-nums; color: #5a6475; white-space: nowrap; }
+  .state { font-size: 12px; color: #9a5b00; white-space: nowrap; }
+  input[type=text] { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #c4ccd8; border-radius: 4px; font: inherit; }
+  .btns { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  button { font: inherit; padding: 6px 16px; border-radius: 6px; border: 1px solid #c4ccd8; background: #fff; cursor: pointer; }
+  button.primary { background: #1f5f8b; border-color: #1f5f8b; color: #fff; font-weight: bold; }
+  button:disabled { opacity: .5; cursor: default; }
+  .msg { margin-top: 12px; white-space: pre-wrap; }
+  .msg.err { color: #b3261e; }
+  .note { color: #5a6475; font-size: 13px; }
+</style>
+</head>
+<body>
+  <div id="loading" class="note">最近の会議メモを探しています…</div>
+  <div id="main" hidden>
+    <div id="guard" class="msg" hidden></div>
+    <div id="pick" hidden>
+      <h3 id="listTitle">最近の会議メモ（どれで議事録を作りますか？）</h3>
+      <div class="list" id="list"></div>
+    </div>
+    <h3>ほかの会議なら、会議メモの URL</h3>
+    <input type="text" id="url" placeholder="https://docs.google.com/document/d/…">
+    <p class="note">作るときに、会議メモの中身を Gemini に送ります。送ってよい会議かどうかを確かめてから選んでください。</p>
+    <div class="btns">
+      <button class="primary" id="create">下書きを作る</button>
+      <button id="sample">サンプルの会議メモで試す</button>
+      <button id="close">閉じる</button>
+    </div>
+  </div>
+  <div id="msg" class="msg"></div>
+
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  var busy = false;
+
+  function setBusy(on, text) {
+    busy = on;
+    ['create', 'sample'].forEach(function (id) { $(id).disabled = on; });
+    show(text || '', false);
+  }
+  function show(text, isErr, link) {
+    var m = $('msg');
+    m.textContent = text;
+    m.className = 'msg' + (isErr ? ' err' : '');
+    if (link) {
+      var a = document.createElement('a');
+      a.href = link; a.target = '_blank'; a.rel = 'noopener'; a.textContent = '下書きを開く';
+      m.appendChild(document.createElement('br'));
+      m.appendChild(a);
+    }
+  }
+  function done(r) {
+    setBusy(false);
+    show(r.message, false, r.draftUrl);
+    $('create').disabled = true;
+  }
+  function fail(e) { setBusy(false); show(e.message || String(e), true); }
+
+  google.script.run.withSuccessHandler(function (r) {
+    $('loading').hidden = true;
+    $('main').hidden = false;
+    if (r.aiStudio) {
+      $('guard').hidden = false;
+      $('guard').textContent = r.message;
+      $('create').disabled = true;
+      $('url').disabled = true;
+      return;
+    }
+    if (r.candidates.length) {
+      $('pick').hidden = false;
+      $('listTitle').textContent = '最近の会議メモ（' + r.range + '。どれで議事録を作りますか？）';
+      r.candidates.forEach(function (c, i) {
+        var l = document.createElement('label'); l.className = 'item';
+        var input = document.createElement('input'); input.type = 'radio'; input.name = 'memo'; input.value = c.id; input.id = 'memo' + i;
+        var when = document.createElement('span'); when.className = 'when'; when.textContent = c.when;
+        var name = document.createElement('span'); name.textContent = c.name;
+        l.appendChild(input); l.appendChild(when); l.appendChild(name);
+        if (c.state) { var st = document.createElement('span'); st.className = 'state'; st.textContent = '（' + c.state + '）'; l.appendChild(st); }
+        $('list').appendChild(l);
+      });
+    } else if (r.message) {
+      show(r.message, false);
+    }
+  }).withFailureHandler(function (e) {
+    $('loading').hidden = true; $('main').hidden = false; fail(e);
+  }).listRecentMemos();
+
+  $('create').onclick = function () {
+    if (busy) return;
+    var picked = document.querySelector('input[name=memo]:checked');
+    var value = $('url').value.trim() || (picked && picked.value);
+    if (!value) { show('会議メモを選ぶか、URL を入れてください', true); return; }
+    setBusy(true, '下書きを作っています（1〜2 分かかります）…');
+    google.script.run.withSuccessHandler(done).withFailureHandler(fail).createDraftFromMemo(value);
+  };
+  $('sample').onclick = function () {
+    if (busy) return;
+    setBusy(true, '架空のサンプルの会議メモから下書きを作っています（1〜2 分かかります）…');
+    google.script.run.withSuccessHandler(done).withFailureHandler(fail).createSampleDraft();
+  };
+  $('close').onclick = function () { google.script.host.close(); };
+</script>
+</body>
+</html>

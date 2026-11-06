@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+  body { font: 14px/1.7 "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic", sans-serif; color: #1b2230; margin: 0; padding: 4px 8px 16px; }
+  .head { font-weight: bold; }
+  .sub { color: #5a6475; font-size: 13px; }
+  .dry { background: #fff3dc; color: #7a4800; border-radius: 6px; padding: 6px 10px; margin: 6px 0; }
+  section { margin-top: 12px; }
+  section > b { display: block; }
+  .indent { padding-left: 1.2em; }
+  .item { padding-left: 1.2em; }
+  .note { padding-left: 2.6em; font-size: 13px; color: #9a5b00; }
+  .warn { color: #9a5b00; }
+  .bad { color: #b3261e; font-weight: bold; }
+  .btns { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  button { font: inherit; padding: 6px 16px; border-radius: 6px; border: 1px solid #c4ccd8; background: #fff; cursor: pointer; }
+  button.primary { background: #1f5f8b; border-color: #1f5f8b; color: #fff; font-weight: bold; }
+  button.danger { color: #b3261e; }
+  button:disabled { opacity: .5; cursor: default; }
+  #result { margin-top: 14px; white-space: pre-wrap; border-top: 1px solid #d9dee7; padding-top: 10px; }
+  #result.err { color: #b3261e; }
+  a { color: #1f5f8b; }
+</style>
+</head>
+<body>
+<div id="view"></div>
+<div class="btns" id="btns">
+  <button class="primary" id="approve">承認する</button>
+  <button class="danger" id="cancel">やめる</button>
+  <button id="close">閉じる（直してから開き直す）</button>
+</div>
+<div id="result" hidden></div>
+
+<script>
+  var DATA = <?!= dataJson ?>;
+  var $ = function (id) { return document.getElementById(id); };
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function link(url, text) {
+    var a = el('a', '', text || url);
+    a.href = url; a.target = '_blank'; a.rel = 'noopener';
+    return a;
+  }
+  /** 文の中の URL をリンクにする（そのほかは文字のまま） */
+  function linkify(parent, text) {
+    String(text).split(/(https:\/\/\S+)/).forEach(function (part, i) {
+      parent.appendChild(i % 2 ? link(part) : document.createTextNode(part));
+    });
+  }
+  function block(title, lines, cls) {
+    var s = el('section');
+    s.appendChild(el('b', '', title));
+    (lines.length ? lines : ['なし']).forEach(function (l) { s.appendChild(el('div', 'indent' + (cls ? ' ' + cls : ''), l)); });
+    return s;
+  }
+
+  function render() {
+    var v = $('view');
+    v.appendChild(el('div', 'head', '📋 内容を確認してください'));
+    v.appendChild(el('div', 'sub', DATA.dry
+      ? 'お試し実行です。承認しても、保存・登録はせず、登録する予定の内容を表示するだけです'
+      : '承認すると、議事録を保存先に置き、Backlog・カレンダーへの登録をまとめて行います'));
+    if (DATA.dry) v.appendChild(el('div', 'dry', '🧪 お試し実行（実際には保存・登録しません）'));
+    var meta = el('div', 'sub');
+    meta.appendChild(document.createTextNode('会議：' + DATA.title + '（' + DATA.date + '）　'));
+    meta.appendChild(link(DATA.draftUrl, '下書きを開く'));
+    if (DATA.status === '登録中') meta.appendChild(document.createTextNode('　※ 前回の承認が途中で止まっています。承認すると続きから登録します'));
+    v.appendChild(meta);
+
+    var t = el('section');
+    t.appendChild(el('b', '', '■ TODO と登録先（Backlog：' + DATA.backlogProject + '）'));
+    if (DATA.backlogNote) t.appendChild(el('div', 'note', '⚠ ' + DATA.backlogNote));
+    if (!DATA.items.length) t.appendChild(el('div', 'indent', 'TODO なし'));
+    DATA.items.forEach(function (x) {
+      t.appendChild(el('div', 'item', x.no + '. ' + (x.lead ? '⚠ ' : '') + '[' + x.category + '] ' + x.what + '｜' + x.who + '｜' + x.due + ' → ' + x.label));
+      x.notes.forEach(function (n) { t.appendChild(el('div', 'note', n)); });
+    });
+    v.appendChild(t);
+
+    var s = el('section');
+    s.appendChild(el('b', '', '■ 議事録の保存先'));
+    var saveLine = el('div', 'indent');
+    linkify(saveLine, DATA.save.text);
+    s.appendChild(saveLine);
+    if (DATA.save.sub) s.appendChild(el('div', 'indent sub', DATA.save.sub));
+    DATA.save.problems.forEach(function (p) { s.appendChild(el('div', 'indent bad', '✖ ' + p)); });
+    if (!DATA.save.ok) s.appendChild(el('div', 'indent bad', '共有の範囲を直してから、もう一度開いてください（このままでは承認できません）'));
+    v.appendChild(s);
+
+    v.appendChild(block('■ 非公開情報（社外に共有する前に伏せるか確認）', DATA.privateInfo));
+    var prevTitle = '■ 前回からの変更' + (DATA.prevUrl ? '' : '（前回の議事録なし。初回として扱いました）');
+    var prev = block(prevTitle, DATA.prevUrl ? DATA.prevChanges : []);
+    if (DATA.prevUrl) { var pl = el('div', 'indent sub'); pl.appendChild(link(DATA.prevUrl, '前回の議事録を開く')); prev.appendChild(pl); }
+    v.appendChild(prev);
+    var c = block('■ 要確認事項', DATA.toConfirm);
+    if (DATA.toConfirm.length) c.appendChild(el('div', 'indent sub', '※ 残ったまま承認すると、議事録の「決まっていないこと」に入れて保存します。解決したものは、下書きの確認用のメモから消してください'));
+    v.appendChild(c);
+
+    $('approve').disabled = !DATA.canApprove;
+    if (DATA.status !== '確認待ち') $('cancel').disabled = true;
+  }
+
+  function finish(r) {
+    var box = $('result');
+    box.hidden = false;
+    box.className = r.ok ? '' : 'err';
+    box.textContent = '';
+    r.lines.forEach(function (l) { var d = el('div'); linkify(d, l); box.appendChild(d); });
+    if (r.ok) { $('approve').disabled = true; $('cancel').disabled = true; $('close').textContent = '閉じる'; }
+    else { $('approve').disabled = !DATA.canApprove; }
+  }
+  function fail(e) { finish({ ok: false, lines: [e.message || String(e)] }); }
+
+  $('approve').onclick = function () {
+    $('approve').disabled = true; $('cancel').disabled = true;
+    finish({ ok: true, lines: ['保存・登録しています（1 分ほどかかることがあります）…'] });
+    $('result').className = '';
+    google.script.run.withSuccessHandler(finish).withFailureHandler(fail).approveMeeting(DATA.id);
+  };
+  var cancelArmed = false;
+  $('cancel').onclick = function () {
+    if (!cancelArmed) { cancelArmed = true; $('cancel').textContent = 'もう一度押すと、下書きを捨てます'; return; }
+    $('approve').disabled = true; $('cancel').disabled = true;
+    google.script.run.withSuccessHandler(finish).withFailureHandler(fail).cancelMeeting(DATA.id);
+  };
+  $('close').onclick = function () { google.script.host.close(); };
+
+  render();
+</script>
+</body>
+</html>
