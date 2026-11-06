@@ -13,7 +13,7 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 5. TODO を Backlog に課題登録する（社内の TODO だけ。お客様など社外の TODO は登録しない）
 6. TODO の期限を Google カレンダーにリマインド登録する（期限日の終日予定・前日 9:00 に通知。未接続時は手動登録用の一覧を表示）
 
-人が操作するのは、会議メモを選ぶ（URL を渡さなかったとき）ことと、確認・承認の 1 回だけです。
+人が操作するのは、会議メモを選ぶ（URL を渡さなかったとき）ことと、確認・承認の 1 回だけです（登録先の Backlog のプロジェクトが決まっていないときは、確認の画面の前にそれも聞かれます）。
 
 ## ファイル構成
 
@@ -21,17 +21,18 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 |---|---|
 | `skills/meeting-tasks/SKILL.md` | スキル本体（実行手順） |
 | `skills/meeting-tasks/references/minutes-template.md` | 議事録の変換プロンプト（書き方の指示） |
-| `skills/meeting-tasks/references/settings.md` | 組織の初期値（Backlog のプロジェクト・議事録の保存先）。リポジトリでは空 |
+| `skills/meeting-tasks/references/settings.md` | 組織の初期値（Backlog のプロジェクト・議事録の保存先・使った記録を残すか）。リポジトリでは空 |
 | `.claude-plugin/plugin.json` | プラグインの情報（ユーザー設定の項目と Backlog MCP の設定を含む） |
 | `.claude-plugin/marketplace.json` | Claude Code でプラグインとして入れるときに使う（Cowork 用の zip には入れない） |
 | `scripts/build-cowork-zip.sh` | Cowork にアップロードする zip を作る |
 | `skills/meeting-tasks/scripts/backlog-mcp.mjs` | Backlog の接続（Backlog MCP）を、Windows・Mac に合わせて起動する |
-| `skills/meeting-tasks/references/run-log.md` | テスト用。使った記録を残す手順（`--log` のときだけ読む） |
+| `skills/meeting-tasks/references/run-log.md` | テスト用。使った記録を残す手順（記録をオンにしたときだけ読む） |
 | `skills/meeting-tasks/scripts/meeting-log.mjs` | テスト用。使った記録（確認・承認の時間、TODO の数、似た課題で止めた数）を残し、集計する |
 | `GUIDE.md` | エンジニアでない人向けの使い方ガイド |
 | `INSTALL.md` | 導入・操作手順書（動作環境、Claude Code・Cowork への入れ方、操作手順） |
 | `MAC-CHECK.md` | Mac で動かすときに確かめる項目（チェックリスト） |
 | `TEST-PLAN.md` | システムテストの項目と結果の表 |
+| `samples/sample-meeting-memo.md` | お試し用の架空の会議メモ（`--memo-file` で使う） |
 
 ## 設定（Backlog のプロジェクト・保存先・API キー）
 
@@ -39,7 +40,7 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 
 | 項目 | 1. 引数 | 2. ユーザー設定（Claude Code のプラグインだけ） | 3. 組織の初期値 | どこにもないとき |
 |---|---|---|---|---|
-| Backlog のプロジェクト | `--backlog-project` | `backlog_project` | `references/settings.md` | 登録の前に聞く |
+| Backlog のプロジェクト | `--backlog-project` | `backlog_project` | `references/settings.md` | 確認の画面の前に聞く |
 | 議事録の保存先（Google ドライブのフォルダ） | `--save-folder` | `save_folder` | `references/settings.md` | パソコンの `~/Documents/minutes/` に保存 |
 
 - **ユーザー設定**：Claude Code でプラグインとして入れたときに、各自が入力する。Cowork と Web 版には入力する画面がないため、組織の初期値か引数を使う
@@ -72,7 +73,7 @@ Google Meet の「Gemini によるメモ」から議事録を作り、TODO を B
 
 4. Claude Code を開き直すと `/meeting-tasks:meeting-tasks` が使えるようになる
 
-Backlog の接続（Backlog MCP）はプラグインに入っていて、上の `backlog_domain` と `backlog_api_key` で動きます。Node.js が入っていれば（ターミナルで `node -v` が動けば）、`skills/meeting-tasks/scripts/backlog-mcp.mjs` が Windows・Mac に合わせて起動します。Mac ではまだ動かしていません（確かめる項目は [MAC-CHECK.md](MAC-CHECK.md)）。すでに自分で Backlog MCP を設定してある場合は、同じ内容のものは二重に起動されず、自分の設定がそのまま使われます。
+Backlog の接続（Backlog MCP）はプラグインに入っていて、上の `backlog_domain` と `backlog_api_key` で動きます。Node.js が入っていれば（ターミナルで `node -v` が動けば）、`skills/meeting-tasks/scripts/backlog-mcp.mjs` が Windows・Mac に合わせて起動します。Mac ではまだ動かしていません（確かめる項目は [MAC-CHECK.md](MAC-CHECK.md)）。すでに自分で Backlog MCP（`backlog`）を設定している場合は、`/mcp` に `plugin:meeting-tasks:backlog` と `backlog` の 2 つが出ます。どちらも同じ Backlog につながり、スキルはつながっているほうを使うので、そのままで問題ありません。1 つにしたいときは、自分で入れたほうを `claude mcp remove backlog` で外します。
 
 スキルのフォルダだけをコピーして使うこともできます（`skills/meeting-tasks` をフォルダごと `~/.claude/skills/meeting-tasks` にコピーすると `/meeting-tasks` で動く）。この場合はユーザー設定が使えないので、引数か `settings.md` で決めます。Backlog MCP も自分で設定します（下の「Backlog MCP が『Connection closed』でつながらない」を参照）。以前の版で `~/.claude/commands/create-minutes.md` と `~/.claude/templates/minutes-template.md` を置いていた場合は、その 2 つを消してください。以前の名前（`create-minutes`・`task-get`）で `~/.claude/skills/` に入れていた場合も、そのフォルダを消してください。
 
@@ -120,21 +121,29 @@ Claude Desktop は公式サイト（https://claude.com/download）から入れ�
 いちばん簡単な使い方は、引数なしで実行することです。最近の会議メモが候補として出るので、選ぶだけで始められます。
 
 ```
-/meeting-tasks
+/meeting-tasks:meeting-tasks
 ```
+
+この README のコマンドは、プラグインとして入れた場合の名前です。スキルのフォルダをコピーして入れた場合は `/meeting-tasks` になります。
 
 Cowork や Web 版では、「議事録を作って」と頼むだけで同じように動きます。「10/2 の西川さんとの MTG」のように会議名・日付・参加者を添えると、その会議メモを探します。
 
 まずはお試し実行（保存・登録を一切しない）で確認するのがおすすめです。
 
 ```
-/meeting-tasks --dry-run
+/meeting-tasks:meeting-tasks --dry-run
+```
+
+手元に会議メモがないときは、リポジトリにあるサンプル（架空の会議メモ）で、確認の画面まで試せます。
+
+```
+/meeting-tasks:meeting-tasks --dry-run --memo-file samples/sample-meeting-memo.md
 ```
 
 問題なければ `--dry-run` を外して本番実行します。会議メモを決めて実行したいときは、引数で指定します。
 
 ```
-/meeting-tasks --doc-id {Google DocsのURLまたはID}
+/meeting-tasks:meeting-tasks --doc-id {Google DocsのURLまたはID}
 ```
 
 ### 主な引数
@@ -142,7 +151,8 @@ Cowork や Web 版では、「議事録を作って」と頼むだけで同じ�
 | 引数 | 必須 | 説明 |
 |---|:---:|---|
 | `--doc-id` | — | Gemini によるメモの URL または ID（省略すると、最近の会議メモから選ぶ） |
-| `--backlog-project` | — | 課題登録先のプロジェクトキー（省略時は「設定」に従う。どこにもなければ登録の前に聞く） |
+| `--memo-file` | — | パソコンにある会議メモのファイルのパス。会議メモがないときのお試し用（`samples/sample-meeting-memo.md`） |
+| `--backlog-project` | — | 課題登録先のプロジェクトキー（省略時は「設定」に従う。どこにもなければ確認の画面の前に聞く） |
 | `--save-folder` | — | 議事録を保存する Google ドライブのフォルダの URL または ID（省略時は「設定」に従う。どこにもなければパソコンに保存） |
 | `--prev` | — | 前回の議事録（ファイルパスか Google Docs の ID）。省略時は保存先（Google ドライブのフォルダか `~/Documents/minutes/`）から同じ名前の会議を自動で探す。`none` で比較しない |
 | `--dry-run` | — | お試し実行 |
@@ -154,7 +164,7 @@ Cowork や Web 版では、「議事録を作って」と頼むだけで同じ�
 
 試用期間に、使い方を見直して Backlog の「試算」を実際の数字に入れ替えるための機能です。ふだんは動きません。次のどれかでオンにしたときだけ、本番で使うたびに記録ファイル（`~/Documents/minutes/meeting-tasks-log.csv`。Cowork ではつないだ `minutes` フォルダの中）に 1 行ずつ残します。お試し実行は記録しません。
 
-- コマンドに `--log` を付ける（例：`/meeting-tasks --log`）
+- コマンドに `--log` を付ける（例：`/meeting-tasks:meeting-tasks --log`）
 - Cowork などでは「議事録を作って（記録あり）」と頼む
 - 試用期間のあいだずっと残すなら、`skills/meeting-tasks/references/settings.md` の「使った記録を残す」に `する` と書く（試用が終わったら消す）
 
@@ -167,7 +177,7 @@ Cowork や Web 版では、「議事録を作って」と頼むだけで同じ�
 
 途中で「やめる」を選んだ回も、「やめた」として残します（集計には入れません）。CSV なので、Excel でも開けます。
 
-ある程度たまったら、このリポジトリのフォルダで次を実行すると、集計と、Backlog の「試算」にそのまま貼れる文が出ます。
+ある程度たまったら、この README があるフォルダで次を実行すると、集計と、Backlog の「試算」にそのまま貼れる文が出ます。
 
 ```
 node skills/meeting-tasks/scripts/meeting-log.mjs summary
@@ -181,12 +191,14 @@ node skills/meeting-tasks/scripts/meeting-log.mjs summary
 
 - Backlog に登録した課題は、権限によっては削除できません。承認すると Backlog とカレンダーにまとめて登録されるので、確認の画面をよく見てから承認してください
 - カレンダーの招待に使う担当者のメールアドレスは Backlog から取れないため、確認の画面でチャットから伝えてください（伝えなければ招待なしで登録します）
-- スキルを修正したら、`.claude-plugin/plugin.json` の `version` を上げてから、Claude Code では `claude plugin update meeting-tasks@meeting-tasks-local` で入れ直してください（スキルのフォルダをコピーして使っている場合は、コピーし直す）。Cowork で使っている場合は、プラグインもアップロードし直してください
+- スキルを修正したら、`.claude-plugin/plugin.json` の `version` を上げてから、Claude Code では `claude plugin update meeting-tasks@meeting-tasks-local` で入れ直してください（スキルのフォルダをコピーして使っている場合は、コピーし直す）。Cowork で使っている場合は、プラグインもアップロードし直してください。版を上げたら、INSTALL.md の「動作を確かめた環境」も、その版で動かして確かめてから書き換えてください
 - `settings.md` に API キーやパスワードを書かないでください。プラグインを入れた全員に配られます
 
 ## 困ったとき
 
 ### Backlog MCP が「Connection closed」でつながらない
+
+プラグインで入れた場合は、まず `/plugin configure meeting-tasks@meeting-tasks-local` で `backlog_domain` と `backlog_api_key` が入っているかを確かめてください。入っていれば、次の原因を確かめます。
 
 **原因**: VS Code から Node.js が見えていない（PATH が通っていない）。Node.js を入れる前から VS Code を起動していると起きる。VS Code を再起動しても直らないことがある。
 
@@ -207,7 +219,7 @@ node skills/meeting-tasks/scripts/meeting-log.mjs summary
 }
 ```
 
-上の例は Windows 用です。Mac では `command` を `npx` にし、`PATH` の行を消します（Mac では確かめていません）。プラグインとして入れた Backlog の接続も、Node.js が見えていないと同じエラーになります。そのときは VS Code をすべて閉じてから開き直してください。
+上の例は Windows 用です。Mac では、`command` にターミナルの `which npx` で出たパスを入れ、`PATH` を `/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin` にします（INSTALL.md の B-4「Mac の場合」と同じ。Mac ではまだ動かしていません）。プラグインとして入れた Backlog の接続も、Node.js が見えていないと同じエラーになります。そのときは VS Code をすべて閉じてから開き直してください。
 
 ### コネクタを許可したのに使えない
 
@@ -241,9 +253,9 @@ node skills/meeting-tasks/scripts/meeting-log.mjs summary
 
 ### Cowork で「Backlog が接続されていないため…」と出る
 
-**原因**: Backlog の設定は VS Code（Claude Code）の `~/.claude.json` にしかなく、Cowork からは見えない。
+**原因**: Backlog の設定が Claude Code 側（プラグインのユーザー設定や `~/.claude.json`）にしかなく、Cowork からは見えない。
 
-**直し方**: セットアップの「Claude Desktop（Cowork）で使う」の手順 4 のとおり、Claude Desktop の設定ファイルに Backlog MCP を書き足して再起動する。「設定」→「開発者」で backlog が「running」になっていれば使える。
+**直し方**: セットアップの「Claude Desktop（Cowork）で使う」の手順 5 のとおり、Claude Desktop の設定ファイルに Backlog MCP を書き足して再起動する。「設定」→「開発者」で backlog が「running」になっていれば使える。
 
 ### 確認の画面に「⚠ 似た課題あり」と出る
 
